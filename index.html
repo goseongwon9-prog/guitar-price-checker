@@ -85,21 +85,29 @@ h1 { font-family: var(--font-display); font-size: clamp(42px, 8vw, 68px); letter
   background: rgba(232,197,71,0.06);
   border: 1px solid rgba(232,197,71,0.25);
   border-radius: 8px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   margin-bottom: 16px;
+}
+.duty-free-yen-box .dfy-main {
   font-size: 13px;
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.4;
+  white-space: nowrap;       /* 한 줄 유지 */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.duty-free-yen-box strong {
+.duty-free-yen-box .dfy-main strong {
   color: var(--accent);
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 14px;
+  white-space: nowrap;
 }
-.duty-free-yen-box .note {
-  color: var(--muted);
+.duty-free-yen-box .dfy-note {
   font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.4;
 }
 .live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; vertical-align: middle; margin-right: 4px; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
@@ -358,6 +366,11 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
   .recent-chip { padding: 7px 18px 7px 10px; }
   .recent-chip-name { font-size: 11px; max-width: 130px; }
   .recent-chip-meta { font-size: 9px; }
+
+  .duty-free-yen-box { padding: 9px 12px; }
+  .duty-free-yen-box .dfy-main { font-size: 12px; }
+  .duty-free-yen-box .dfy-main strong { font-size: 13px; }
+  .duty-free-yen-box .dfy-note { font-size: 10px; }
   /* 모바일은 호버 안 되니까 X 버튼 항상 보이게 */
   .recent-chip-del { opacity: 0.6; width: 14px; height: 14px; font-size: 12px; }
 }
@@ -745,7 +758,7 @@ function updateDutyFreeYenInfo() {
   const el = document.getElementById('dutyFreeYenInfo');
   if (!el) return;
   if (!jpyRate || !usdRate) {
-    el.textContent = '💡 환율 로드 후 계산됩니다';
+    el.innerHTML = '<div class="dfy-main">💡 환율 로드 후 계산됩니다</div>';
     return;
   }
   // 표시가 엔화 × (10/11) × jpyRate ≤ $800 × usdRate
@@ -753,8 +766,8 @@ function updateDutyFreeYenInfo() {
   const maxYen = (DUTY_FREE_USD * usdRate * 1.1) / jpyRate;
   const rounded = Math.floor(maxYen / 100) * 100;  // 100엔 단위 내림
   el.innerHTML =
-    `💡 $800 면세 한도 = 일본 현지 표시가 <strong>¥${rounded.toLocaleString('ja-JP')}</strong>까지 ` +
-    `<span class="note">(10% TAX FREE 받기 전, 가격표 기준)</span>`;
+    `<div class="dfy-main">💡 $800 면세 = 현지가 <strong>¥${rounded.toLocaleString('ja-JP')}</strong></div>` +
+    `<div class="dfy-note">10% TAX FREE 받기 전 · 가격표 기준</div>`;
 }
 
 // ─── CHART ────────────────────────────────
