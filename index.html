@@ -290,12 +290,19 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
     </div>
 
     <div class="customs-info">
-      <div class="customs-row"><span>면세 한도</span><span>$800 (약 ₩1,100,000)</span></div>
+      <div class="customs-row"><span>면세 한도</span><span id="dutyFreeLimitDisplay">$800 (환율 로딩 중...)</span></div>
+      <div class="customs-row" id="rateFailRow" style="display:none">
+        <span style="color:var(--accent2);font-size:11px">⚠️ 실시간 환율 로드 실패</span>
+        <span style="color:var(--accent2);font-size:11px">고정환율 1,350원 적용 중</span>
+      </div>
       <div class="customs-row"><span>과세 기준</span><span>초과분에만 부과</span></div>
       <div class="customs-row"><span>관세율 (기타)</span><span>8%</span></div>
       <div class="customs-row"><span>부가세</span><span>10%</span></div>
       <div class="customs-row"><span>합산 실효세율</span><span>≈ 18.8%</span></div>
       <div class="customs-row"><span class="highlight">✈️ 자진신고 시 실효세율</span><span class="highlight">≈ 13.2% (30% 감면)</span></div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin:-8px 0 16px;line-height:1.6;padding:0 4px">
+      * 실시간 시장환율 기준 추정값 · 실제 <a href="https://unipass.customs.go.kr/clip/index.do" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:underline">관세청 과세환율</a>과 1~2% 차이날 수 있음
     </div>
 
     <div class="loading-bar" id="loadingBar"></div>
@@ -317,7 +324,7 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
         <div class="price-card">
           <div class="price-card-label">🇰🇷 한국 최저가</div>
           <div class="price-card-value" id="koreaPrice">—</div>
-          <div class="price-card-sub" id="koreaPriceSub">네이버 쇼핑 기준</div>
+          <div class="price-card-sub" id="koreaPriceSub">6개 악기몰 최저가</div>
         </div>
       </div>
       <div class="verdict" id="verdict">
@@ -344,8 +351,8 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
 
     <div class="naver-section">
       <div class="naver-header">
-        <div class="naver-title">네이버 쇼핑 검색 결과</div>
-        <div class="naver-badge">NAVER SHOPPING</div>
+        <div class="naver-title">한국 악기 쇼핑몰 검색 결과</div>
+        <div class="naver-badge">6 SHOPS</div>
       </div>
       <div id="naverResults"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">검색 중...</div></div>
       <div class="warning-box" id="naverWarning" style="display:none"></div>
@@ -400,14 +407,15 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
 
 <footer>
   관세는 여행자 휴대품 기준 · 실제 세액은 세관 판단에 따라 달라질 수 있음<br>
-  환율: ExchangeRate-API / Frankfurter · 쇼핑가격: 네이버 쇼핑 API
+  환율: ExchangeRate-API / Frankfurter · 쇼핑가격: 뮤직포스 · 기타네트 · 인스테이션 · 버즈비 · 프리버드 · 스쿨뮤직
 </footer>
 </div>
 
 <script>
 // ─── CONFIG ───────────────────────────────
-const NAVER_ID  = 'BekeIJ787JOctlNLnKe5';
-const NAVER_SEC = 'RFZUafqyYF';
+// 한국 악기 쇼핑몰 6곳을 통합 검색하는 Cloudflare Worker
+// 뮤직포스, 기타네트, 인스테이션, 버즈비, 프리버드, 스쿨뮤직
+const SHOP_WORKER_URL = 'https://naver-shop-proxy.goseongwon9.workers.dev';
 const DUTY_FREE_USD = 800;
 let jpyRate = null, usdRate = null;
 let chartInst = null;
@@ -457,6 +465,22 @@ async function fetchRates() {
     document.getElementById('usdKrwVal').textContent = `${Math.round(usdRate).toLocaleString()}원`;
     document.getElementById('usdKrwChg').textContent = '1달러당';
     document.getElementById('usdKrwChg').className = 'rate-card-change';
+  }
+
+  updateDutyFreeDisplay();
+}
+
+function updateDutyFreeDisplay() {
+  const el = document.getElementById('dutyFreeLimitDisplay');
+  const failRow = document.getElementById('rateFailRow');
+  if (usdRate) {
+    const krw = Math.round(DUTY_FREE_USD * usdRate);
+    el.textContent = `$800 (약 ₩${krw.toLocaleString('ko-KR')})`;
+    failRow.style.display = 'none';
+  } else {
+    const fallbackKrw = DUTY_FREE_USD * 1350;
+    el.textContent = `$800 (약 ₩${fallbackKrw.toLocaleString('ko-KR')})`;
+    failRow.style.display = '';
   }
 }
 
@@ -661,16 +685,21 @@ async function calculate() {
   document.getElementById('bdSelfDeclRow').style.display = (!isExempt) ? '' : 'none';
   document.getElementById('bdTotal').textContent      = `${fmt(totalKrw)}원`;
 
-  // ── 3. 네이버 검색 ──
-  setLoading(true, '네이버 쇼핑에서 한국 최저가 검색 중...');
-  let naverItems = [], naverMin = manualKrw;
+  // ── 3. 한국 악기 쇼핑몰 검색 ──
+  setLoading(true, '한국 악기 쇼핑몰 6곳에서 최저가 검색 중...');
+  let shopItems = [];
+  let naverMin = manualKrw, naverError = null;
   try {
-    naverItems = await searchNaver(productName);
-    if (naverItems.length > 0 && !manualKrw) naverMin = naverItems[0].lprice;
-  } catch(e) { console.warn('Naver:', e); }
+    shopItems = await searchNaver(productName);
+    // Worker가 이미 가격순 정렬해서 보냄 → 첫 결과가 최저가
+    if (shopItems.length > 0 && !manualKrw) naverMin = shopItems[0].lprice;
+  } catch(e) {
+    console.warn('Shop search:', e);
+    naverError = e.message || '알 수 없는 오류';
+  }
 
-  renderVerdict(totalKrw, naverMin, naverItems);
-  renderNaverResults(naverItems, totalKrw);
+  renderVerdict(totalKrw, naverMin, shopItems);
+  renderNaverResults(shopItems, totalKrw, naverError, productName);
 
   document.getElementById('results').classList.add('visible');
   document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -678,21 +707,26 @@ async function calculate() {
   btn.disabled = false; btn.textContent = 'CALCULATE';
 }
 
-// ─── NAVER ────────────────────────────────
+// ─── 한국 악기 쇼핑몰 통합 검색 ────────────────────────────────
+// Cloudflare Worker를 통해 6개 쇼핑몰(뮤직포스/기타네트/인스테이션/버즈비/프리버드/스쿨뮤직)
+// 검색 결과를 한 번에 받아온다. 모두 국내 쇼핑몰이라 isOverseas는 항상 false.
 async function searchNaver(query) {
-  const target = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&display=5&sort=asc`;
-  const proxy  = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`;
-  const res = await fetch(proxy, {
-    headers: { 'X-Naver-Client-Id': NAVER_ID, 'X-Naver-Client-Secret': NAVER_SEC }
-  });
-  if (!res.ok) throw new Error('proxy');
-  const outer = await res.json();
-  const data  = JSON.parse(outer.contents);
-  if (!data.items) throw new Error('no items');
+  const url = `${SHOP_WORKER_URL}/?query=${encodeURIComponent(query)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
+
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  if (!Array.isArray(data.items)) throw new Error('Worker 응답에 items 없음');
+
+  console.log(`[Shop search] ${data.items.length}개 상품 발견 (${(data.siteResults || []).map(s => `${s.site}:${s.items?.length || 0}`).join(', ')})`);
+
   return data.items.map(i => ({
-    title: i.title.replace(/<[^>]+>/g,''),
-    lprice: parseInt(i.lprice),
-    link: i.link, mallName: i.mallName
+    title: i.title,
+    lprice: i.lprice,
+    link: i.link,
+    mallName: i.mallName,
+    isOverseas: false  // Worker가 국내 쇼핑몰만 검색
   }));
 }
 
@@ -708,7 +742,7 @@ function renderVerdict(totalKrw, koreaMin) {
   if (!koreaMin) {
     v.className = 'verdict neutral';
     icon.textContent = '🔍'; main.textContent = '한국 가격 비교 불가';
-    sub.textContent  = '네이버 검색 결과가 없습니다. 직접 입력해주세요.';
+    sub.textContent  = '6개 쇼핑몰에서 검색 결과가 없습니다. 직접 입력해주세요.';
     kEl.textContent  = '—'; return;
   }
   kEl.textContent  = fmt(koreaMin) + '원';
@@ -731,15 +765,25 @@ function renderVerdict(totalKrw, koreaMin) {
   }
 }
 
-function renderNaverResults(items, totalKrw) {
+function renderNaverResults(items, totalKrw, naverError, query) {
   const c = document.getElementById('naverResults');
   const w = document.getElementById('naverWarning');
-  if (!items || items.length === 0) {
-    c.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;line-height:1.8">검색 결과가 없습니다.<br><span style="font-size:11px">상품명을 간략하게 입력하거나 직접 가격을 입력해주세요.</span></div>`;
+
+  // 1) API 자체가 실패한 경우 (네트워크/프록시/인증 에러)
+  if (naverError) {
+    c.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;line-height:1.8">쇼핑몰 검색 실패<br><span style="font-size:11px">아래 안내를 확인해주세요.</span></div>`;
     w.style.display = 'block';
-    w.textContent   = '⚠️ CORS 제한으로 네이버 API가 차단될 수 있습니다. 결과가 없으면 네이버 쇼핑에서 직접 검색 후 "한국 가격 직접 입력" 필드에 입력해주세요.';
+    w.innerHTML = `⚠️ <strong>Worker 오류:</strong> ${naverError}<br>잠시 후 다시 시도하거나, "한국 가격 직접 입력" 필드에 가격을 넣어주세요.`;
     return;
   }
+
+  // 2) 검색 결과 0건
+  if (!items || items.length === 0) {
+    c.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;line-height:1.8">'<span style="color:var(--text)">${query}</span>' 검색 결과 0건<br><span style="font-size:11px;line-height:1.8;display:inline-block;margin-top:8px">💡 6개 쇼핑몰(뮤직포스/기타네트/인스테이션/버즈비/프리버드/스쿨뮤직)에서 결과 없음<br>한국어 + 간단한 키워드로 시도해보세요 (예: "펜더 스트라토캐스터")</span></div>`;
+    w.style.display = 'none';
+    return;
+  }
+
   w.style.display = 'none';
   c.innerHTML = items.map((item, i) => {
     const diff = item.lprice - totalKrw;
