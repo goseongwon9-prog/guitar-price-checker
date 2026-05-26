@@ -222,10 +222,30 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
 /* 최근 검색 */
 .recent-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
 .recent-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.recent-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; transition: border-color 0.15s, background 0.15s; min-width: 0; max-width: 100%; }
+.recent-chip { position: relative; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px 8px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; transition: border-color 0.15s, background 0.15s; min-width: 0; max-width: 100%; }
 .recent-chip:hover { border-color: var(--accent); background: rgba(232,197,71,0.04); }
-.recent-chip-name { font-size: 12px; color: var(--text); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-chip-name { font-size: 12px; color: var(--text); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .recent-chip-meta { font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+.recent-chip-pct { font-weight: 600; }
+.recent-chip-pct.profit { color: var(--green); }
+.recent-chip-pct.loss { color: var(--red); }
+.recent-chip-pct.neutral { color: var(--muted); }
+.recent-chip-del {
+  position: absolute; top: 3px; right: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--border);
+  border: none;
+  color: var(--muted);
+  font-size: 13px; line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; padding-bottom: 1px;
+}
+.recent-chip:hover .recent-chip-del { opacity: 1; }
+.recent-chip-del:hover { background: var(--red); color: #fff; }
 
 /* 비교 라디오 — 사용자가 직접 비교 대상 선택 */
 .compare-radio { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
@@ -315,9 +335,11 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
   .compare-col-header { font-size: 10px; }
 
   .recent-section { padding: 14px 16px; }
-  .recent-chip { padding: 7px 10px; }
-  .recent-chip-name { font-size: 11px; max-width: 140px; }
+  .recent-chip { padding: 7px 18px 7px 10px; }
+  .recent-chip-name { font-size: 11px; max-width: 130px; }
   .recent-chip-meta { font-size: 9px; }
+  /* 모바일은 호버 안 되니까 X 버튼 항상 보이게 */
+  .recent-chip-del { opacity: 0.6; width: 14px; height: 14px; font-size: 12px; }
 }
 </style>
 </head>
@@ -469,7 +491,7 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
       <div class="rate-card-pair">JPY / KRW</div>
       <div class="rate-card-value" id="jpyKrwVal">—</div>
       <div class="rate-card-change" id="jpyKrwChg"></div>
-      <div class="rate-card-sub"><span class="live-dot"></span>실시간 · <span id="rateUpdated">로딩 중</span></div>
+      <div class="rate-card-sub"><span class="live-dot"></span>실시간</div>
     </div>
     <div class="rate-card usd">
       <div class="rate-card-flag">🇺🇸</div>
@@ -500,7 +522,7 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
   </div>
 
   <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.8;">
-    * 데이터 출처: <span id="rateSource">로딩 중...</span><br>
+    * 데이터 출처: <span id="rateSource">로딩 중...</span> · <span id="rateUpdated">기준 시각 확인 중</span><br>
     * 실제 환전 시 은행 스프레드(보통 1~2%)가 추가 적용됩니다
   </div>
 </div>
@@ -529,7 +551,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ─── 최근 검색 (localStorage) ────────────────────────────────
-const RECENT_KEY = 'gpc_recent_v1';
+const RECENT_KEY = 'gpc_recent_v2';
 const RECENT_MAX = 8;
 
 function loadRecent() {
@@ -550,12 +572,36 @@ function renderRecentSearches() {
   if (!sec || !chips) return;
   if (list.length === 0) { sec.style.display = 'none'; return; }
   sec.style.display = '';
-  chips.innerHTML = list.map((e, i) => `
-    <div class="recent-chip" onclick="restoreRecent(${i})">
-      <div class="recent-chip-name">${escapeHtml(e.q)}</div>
-      <div class="recent-chip-meta">¥${fmtJ(e.yen)} · ${fmt(e.total)}원</div>
-    </div>
-  `).join('');
+  chips.innerHTML = list.map((e, i) => {
+    // 손익률 표시 (음수 = 일본 이득, 할인처럼 표현)
+    let pctHtml = '';
+    if (e.pct != null) {
+      if (e.pct < -1) {
+        // 일본이 더 쌈 → 음수 표시, 초록색
+        pctHtml = ` · <span class="recent-chip-pct profit">${e.pct.toFixed(1)}%</span>`;
+      } else if (e.pct > 1) {
+        // 일본이 더 비쌈 → 양수 표시, 빨강색
+        pctHtml = ` · <span class="recent-chip-pct loss">+${e.pct.toFixed(1)}%</span>`;
+      } else {
+        pctHtml = ` · <span class="recent-chip-pct neutral">≈</span>`;
+      }
+    }
+    return `
+      <div class="recent-chip" onclick="restoreRecent(${i})">
+        <button class="recent-chip-del" onclick="event.stopPropagation(); deleteRecent(${i})" title="삭제">×</button>
+        <div class="recent-chip-name">${escapeHtml(e.q)}</div>
+        <div class="recent-chip-meta">¥${fmtJ(e.yen)} · ${fmt(e.total)}원${pctHtml}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function deleteRecent(i) {
+  const list = loadRecent();
+  if (i < 0 || i >= list.length) return;
+  list.splice(i, 1);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+  renderRecentSearches();
 }
 function restoreRecent(i) {
   const list = loadRecent();
@@ -840,12 +886,12 @@ async function fetchHistoricalData(currency, period) {
 
     const labels = d.data.map(p => formatChartLabel(p.t, period));
     const values = d.data.map(p => p.rate);
-    return { labels, values };
+    return { labels, values, source: 'worker' };
   } catch (e) {
     console.warn('[Rate history] 실패, 폴백 사용:', e.message);
   }
 
-  // Fallback: 평탄한 추정 데이터
+  // Fallback: 평탄한 추정 데이터 (랜덤이라 정확한 비교는 부적합)
   const base_val = currency === 'jpy' ? (jpyRate || 9.5) : (usdRate || 1350);
   const counts = { '3h': 12, '12h': 12, '1d': 12, '1w': 14, '1mo': 22 };
   const n = counts[period] || 12;
@@ -861,7 +907,7 @@ async function fetchHistoricalData(currency, period) {
     labels.push(formatChartLabel(d.getTime(), period));
     values.push(base_val + (Math.random() - 0.5) * base_val * 0.005);
   }
-  return { labels, values };
+  return { labels, values, source: 'fallback' };
 }
 
 function formatChartLabel(timestamp, period) {
@@ -895,7 +941,12 @@ function switchMain(tab) {
   document.querySelectorAll('.main-tab').forEach((t,i) => t.classList.toggle('active', ['calc','rate'][i] === tab));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + tab).classList.add('active');
-  if (tab === 'rate' && !chartInst) loadChart();
+
+  // 환율 탭으로 전환할 때마다 최신 데이터로 갱신 (상단 값 + 차트 + 카드 diff)
+  if (tab === 'rate') {
+    fetchRates();
+    loadChart();
+  }
 }
 
 // ─── TOGGLE ───────────────────────────────
@@ -977,17 +1028,30 @@ async function calculate() {
     naverError = e.message || '알 수 없는 오류';
   }
 
+  // setComparison에서 라디오 변경 시 다시 저장할 수 있도록 상태 보관
+  _compareState = {
+    items: shopItems,
+    totalKrw,
+    productName,
+    yen: yenPrice,
+    taxFree,
+    selfDecl
+  };
+
   renderVerdict(totalKrw, naverMin, repItem);
   renderNaverResults(shopItems, totalKrw, naverError, productName, repItem);
 
   // 성공적 계산이면 최근 검색에 저장
   if (yenPrice > 0) {
+    // 비용 변동률 (음수 = 일본이 더 쌈 = 이득, 할인처럼 음수)
+    const savedPct = naverMin ? ((totalKrw - naverMin) / naverMin) * 100 : null;
     saveRecentSearch({
       q: productName,
       yen: yenPrice,
       taxFree, selfDecl,
       total: totalKrw,
       kr: naverMin || null,
+      pct: savedPct,
       krTitle: repItem?.title || null,
       krLink: repItem?.link || null,
       krMall: repItem?.mallName || null,
@@ -1131,10 +1195,6 @@ function renderNaverResults(items, totalKrw, naverError, query, repItem) {
   }
 
   w.style.display = 'none';
-
-  // 비교 대상 선택 상태를 setComparison에서 쓸 수 있도록 저장
-  _compareState.items = items;
-  _compareState.totalKrw = totalKrw;
   const repIdx = items.findIndex(i => repItem && i.link === repItem.link);
 
   const header = `<div class="compare-col-header"><span>비교 대상 선택 (라디오)</span><span>가격</span></div>`;
@@ -1161,8 +1221,11 @@ function renderNaverResults(items, totalKrw, naverError, query, repItem) {
   c.innerHTML = header + list;
 }
 
-// 비교 대상 선택 시 호출 — verdict + 비교 가격 카드 즉시 갱신
-let _compareState = { items: [], totalKrw: 0 };
+// 비교 대상 선택 상태 — 라디오 변경 시 verdict 갱신 + 최근 검색 재저장에 사용
+let _compareState = {
+  items: [], totalKrw: 0,
+  productName: '', yen: 0, taxFree: false, selfDecl: false
+};
 function setComparison(i) {
   const item = _compareState.items[i];
   if (!item) return;
@@ -1171,6 +1234,24 @@ function setComparison(i) {
   document.querySelectorAll('#naverResults .product-item').forEach((el, idx) => {
     el.classList.toggle('is-rep', idx === i);
   });
+  // 최근 검색 갱신 — 같은 q+yen 이므로 saveRecentSearch가 dedupe로 덮어씀
+  if (_compareState.yen > 0 && _compareState.productName) {
+    const newPct = ((_compareState.totalKrw - item.lprice) / item.lprice) * 100;
+    saveRecentSearch({
+      q: _compareState.productName,
+      yen: _compareState.yen,
+      taxFree: _compareState.taxFree,
+      selfDecl: _compareState.selfDecl,
+      total: _compareState.totalKrw,
+      kr: item.lprice,
+      pct: newPct,
+      krTitle: item.title,
+      krLink: item.link,
+      krMall: item.mallName,
+      t: Date.now()
+    });
+    renderRecentSearches();
+  }
 }
 
 // ─── UTILS ────────────────────────────────
