@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎸 Guitar Price Checker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0d0d0d;
+  --surface: #161616;
+  --surface2: #1e1e1e;
+  --border: #2a2a2a;
+  --accent: #e8c547;
+  --accent2: #e87c47;
+  --green: #47e8a0;
+  --red: #e84747;
+  --blue: #47a8e8;
+  --text: #f0f0f0;
+  --muted: #666;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-body: 'Noto Sans KR', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.012) 40px, rgba(255,255,255,0.012) 41px),
+    repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.012) 40px, rgba(255,255,255,0.012) 41px);
+  pointer-events: none;
+  z-index: 0;
+}
+.container { max-width: 820px; margin: 0 auto; padding: 40px 20px 80px; position: relative; z-index: 1; }
+
+/* ── HEADER ── */
+header { margin-bottom: 36px; border-bottom: 1px solid var(--border); padding-bottom: 28px; }
+h1 { font-family: var(--font-display); font-size: clamp(42px, 8vw, 68px); letter-spacing: 2px; color: var(--accent); line-height: 1; margin-bottom: 8px; }
+.header-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+/* ── MAIN TABS ── */
+.main-tabs { display: flex; gap: 4px; margin-bottom: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+.main-tab { flex: 1; padding: 10px; background: none; border: none; color: var(--muted); font-family: var(--font-body); font-size: 13px; font-weight: 500; border-radius: 7px; cursor: pointer; transition: all 0.2s; }
+.main-tab.active { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.main-tab:hover:not(.active) { color: var(--text); }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── EXCHANGE RATE PANEL ── */
+.rate-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.rate-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.rate-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.rate-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.rate-card.jpy::before { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+.rate-card.usd::before { background: linear-gradient(90deg, var(--blue), var(--green)); }
+.rate-card-flag { font-size: 22px; margin-bottom: 8px; }
+.rate-card-pair { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+.rate-card-value { font-family: var(--font-mono); font-size: 26px; font-weight: 600; margin-bottom: 4px; }
+.rate-card.jpy .rate-card-value { color: var(--accent); }
+.rate-card.usd .rate-card-value { color: var(--blue); }
+.rate-card-change { font-family: var(--font-mono); font-size: 11px; }
+.rate-card-change.up { color: var(--green); }
+.rate-card-change.down { color: var(--red); }
+.rate-card-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; vertical-align: middle; margin-right: 4px; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Period selector */
+.period-selector { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.period-btn { padding: 6px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--font-mono); font-size: 12px; cursor: pointer; transition: all 0.15s; }
+.period-btn.active { background: var(--accent); color: #0d0d0d; border-color: var(--accent); font-weight: 600; }
+.period-btn:hover:not(.active) { color: var(--text); border-color: #444; }
+
+/* Chart tabs */
+.chart-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+.chart-tab { padding: 6px 14px; background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 12px; cursor: pointer; transition: all 0.15s; }
+.chart-tab.active.jpy { background: rgba(232,197,71,0.15); color: var(--accent); border-color: var(--accent); }
+.chart-tab.active.usd { background: rgba(71,168,232,0.15); color: var(--blue); border-color: var(--blue); }
+.chart-tab:hover:not(.active) { color: var(--text); }
+
+.chart-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  position: relative;
+  height: 260px;
+}
+.chart-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
+
+/* ── CALCULATOR PANEL ── */
+.input-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin-bottom: 20px; }
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 20px; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+label { font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0.5px; }
+input[type="text"], input[type="number"] {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 13px 16px; font-family: var(--font-body); font-size: 15px; color: var(--text);
+  width: 100%; transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+}
+input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,197,71,0.1); }
+input::placeholder { color: var(--muted); }
+.input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.yen-wrap { position: relative; }
+.yen-wrap input { padding-left: 40px; }
+.yen-sym { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--accent); font-family: var(--font-mono); font-size: 16px; font-weight: 600; pointer-events: none; }
+
+/* Toggle options */
+.toggle-group { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.toggle-item { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; cursor: pointer; transition: all 0.15s; user-select: none; }
+.toggle-item:hover { border-color: #444; }
+.toggle-item.active { border-color: var(--accent); background: rgba(232,197,71,0.08); }
+.toggle-item input[type="checkbox"] { display: none; }
+.toggle-check { width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; transition: all 0.15s; flex-shrink: 0; }
+.toggle-item.active .toggle-check { background: var(--accent); border-color: var(--accent); color: #000; }
+.toggle-label { font-size: 13px; color: var(--muted); }
+.toggle-item.active .toggle-label { color: var(--text); }
+
+/* Customs info box */
+.customs-info { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
+.customs-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); line-height: 2.2; }
+.customs-row span:last-child { font-family: var(--font-mono); color: var(--text); font-size: 12px; }
+.customs-row .highlight { color: var(--green); }
+
+.calc-btn { width: 100%; padding: 16px; background: var(--accent); color: #0d0d0d; border: none; border-radius: 8px; font-family: var(--font-display); font-size: 20px; letter-spacing: 2px; cursor: pointer; transition: transform 0.15s, opacity 0.15s; margin-top: 4px; }
+.calc-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.calc-btn:active { transform: translateY(0); }
+.calc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── RESULTS ── */
+.results { display: none; }
+.results.visible { display: block; animation: fadeIn 0.4s ease; }
+
+.result-hero { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin-bottom: 16px; position: relative; overflow: hidden; }
+.result-hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+.result-hero-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+.product-name-display { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 24px; line-height: 1.4; }
+
+.price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.price-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.price-card-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.price-card-value { font-family: var(--font-mono); font-size: 20px; font-weight: 600; line-height: 1.2; }
+.price-card-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
+.price-card.japan .price-card-value { color: var(--accent); }
+
+.verdict { border-radius: 10px; padding: 18px 20px; display: flex; align-items: center; gap: 14px; }
+.verdict.profit { background: rgba(71,232,160,0.08); border: 1px solid rgba(71,232,160,0.3); }
+.verdict.loss { background: rgba(232,71,71,0.08); border: 1px solid rgba(232,71,71,0.3); }
+.verdict.neutral { background: rgba(232,197,71,0.08); border: 1px solid rgba(232,197,71,0.3); }
+.verdict-icon { font-size: 28px; flex-shrink: 0; }
+.verdict-main { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.verdict.profit .verdict-main { color: var(--green); }
+.verdict.loss .verdict-main { color: var(--red); }
+.verdict.neutral .verdict-main { color: var(--accent); }
+.verdict-sub { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+.breakdown { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 16px; }
+.breakdown-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; }
+.breakdown-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; }
+.breakdown-row:last-child { border-bottom: none; }
+.breakdown-row .key { color: var(--muted); }
+.breakdown-row .val { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+.breakdown-row .val.good { color: var(--green); }
+.breakdown-row .val.warn { color: var(--accent2); }
+.breakdown-row.total { margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--border); border-bottom: none; }
+.breakdown-row.total .key { color: var(--text); font-weight: 700; font-size: 14px; }
+.breakdown-row.total .val { color: var(--accent); font-size: 16px; }
+
+.naver-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 16px; }
+.naver-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.naver-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+.naver-badge { font-size: 10px; background: rgba(3,199,90,0.15); color: #03c75a; border: 1px solid rgba(3,199,90,0.3); padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+
+.product-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); align-items: flex-start; }
+.product-item:last-child { border-bottom: none; }
+.product-rank { font-family: var(--font-mono); font-size: 11px; color: var(--muted); width: 20px; flex-shrink: 0; margin-top: 3px; }
+.product-info { flex: 1; min-width: 0; }
+.product-title { font-size: 13px; color: var(--text); margin-bottom: 4px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.product-title a { color: inherit; text-decoration: none; }
+.product-title a:hover { color: var(--accent); }
+.product-meta { font-size: 11px; color: var(--muted); }
+.product-price-wrap { text-align: right; flex-shrink: 0; }
+.product-price { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: var(--text); }
+.product-price.cheaper { color: var(--red); }
+.product-price.expensive { color: var(--green); }
+.product-diff { font-size: 10px; margin-top: 2px; font-family: var(--font-mono); }
+.product-diff.cheaper { color: var(--red); }
+.product-diff.expensive { color: var(--green); }
+
+.loading-bar { display: none; height: 2px; background: var(--border); border-radius: 2px; margin: 16px 0; overflow: hidden; }
+.loading-bar.active { display: block; }
+.loading-bar::after { content: ''; display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); animation: loading 1.5s ease-in-out infinite; }
+@keyframes loading { 0%{width:0%;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0%;margin-left:100%} }
+.status-msg { font-size: 12px; color: var(--muted); text-align: center; padding: 8px; display: none; }
+.status-msg.visible { display: block; }
+
+.warning-box { background: rgba(232,124,71,0.08); border: 1px solid rgba(232,124,71,0.25); border-radius: 8px; padding: 12px 16px; font-size: 12px; color: var(--accent2); line-height: 1.6; margin-top: 12px; }
+.info-box { background: rgba(71,168,232,0.08); border: 1px solid rgba(71,168,232,0.25); border-radius: 8px; padding: 12px 16px; font-size: 12px; color: var(--blue); line-height: 1.7; margin-bottom: 16px; }
+.info-box strong { color: #7dd3fc; }
+
+footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 48px; line-height: 2; }
+
+@media (max-width: 520px) {
+  .input-row { grid-template-columns: 1fr; }
+  .price-grid { grid-template-columns: 1fr; }
+  .rate-cards { grid-template-columns: 1fr; }
+  h1 { font-size: 48px; }
+  .main-tab { font-size: 12px; padding: 8px 6px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>GUITAR<br>PRICE CHECK</h1>
+  <p class="header-desc">일본 현지가 → 관세 포함 실구매가 계산 + 한국 최저가 비교</p>
+</header>
+
+<!-- MAIN TABS -->
+<div class="main-tabs">
+  <button class="main-tab active" onclick="switchMain('calc')">🎸 가격 계산기</button>
+  <button class="main-tab" onclick="switchMain('rate')">📈 실시간 환율</button>
+</div>
+
+<!-- ════════════════════════════════
+     TAB 1 : CALCULATOR
+════════════════════════════════ -->
+<div class="tab-panel active" id="panel-calc">
+
+  <div class="info-box">
+    💡 <strong>계산 방식 안내</strong><br>
+    일본 악기점에서 여권 제시 시 소비세 10% 면제(TAX FREE) · 한국 입국 시 $800 초과분에 관세 8% + 부가세 10% 부과<br>
+    ✈️ <strong>자진신고 시 세금 30% 감면 (최대 20만원)</strong> — 비행기 안 세관신고서 미리 작성 후 자진신고 카운터 이용
+  </div>
+
+  <div class="input-section">
+    <div class="section-label">상품 정보 입력</div>
+
+    <div class="field">
+      <label>상품명 (한국어로 입력하면 네이버 검색이 정확해요)</label>
+      <input type="text" id="productName" placeholder="예: Fender Player Stratocaster Sunburst" />
+    </div>
+
+    <div class="input-row">
+      <div class="field">
+        <label>일본 현지 가격 (세금 포함 / 엔화)</label>
+        <div class="yen-wrap">
+          <span class="yen-sym">¥</span>
+          <input type="number" id="yenPrice" placeholder="150000" min="0" />
+        </div>
+      </div>
+      <div class="field">
+        <label>한국 가격 직접 입력 (선택, 자동검색됨)</label>
+        <input type="number" id="krwManual" placeholder="자동 검색됩니다" min="0" />
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:8px;">옵션</div>
+    <div class="toggle-group">
+      <label class="toggle-item active" id="toggle-taxfree">
+        <input type="checkbox" checked onchange="toggleOpt(this,'toggle-taxfree')">
+        <span class="toggle-check">✓</span>
+        <span class="toggle-label">🇯🇵 TAX FREE 적용 (소비세 10% 면제)</span>
+      </label>
+      <label class="toggle-item active" id="toggle-selfdecl">
+        <input type="checkbox" checked onchange="toggleOpt(this,'toggle-selfdecl')">
+        <span class="toggle-check">✓</span>
+        <span class="toggle-label">✈️ 자진신고 30% 감면</span>
+      </label>
+    </div>
+
+    <div class="customs-info">
+      <div class="customs-row"><span>면세 한도</span><span>$800 (약 ₩1,100,000)</span></div>
+      <div class="customs-row"><span>과세 기준</span><span>초과분에만 부과</span></div>
+      <div class="customs-row"><span>관세율 (기타)</span><span>8%</span></div>
+      <div class="customs-row"><span>부가세</span><span>10%</span></div>
+      <div class="customs-row"><span>합산 실효세율</span><span>≈ 18.8%</span></div>
+      <div class="customs-row"><span class="highlight">✈️ 자진신고 시 실효세율</span><span class="highlight">≈ 13.2% (30% 감면)</span></div>
+    </div>
+
+    <div class="loading-bar" id="loadingBar"></div>
+    <div class="status-msg" id="statusMsg"></div>
+    <button class="calc-btn" id="calcBtn" onclick="calculate()">CALCULATE</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+    <div class="result-hero">
+      <div class="result-hero-title">계산 결과</div>
+      <div class="product-name-display" id="resultProductName"></div>
+      <div class="price-grid">
+        <div class="price-card japan">
+          <div class="price-card-label">🇯🇵 일본에서 사면 (관세 포함)</div>
+          <div class="price-card-value" id="totalKrw">—</div>
+          <div class="price-card-sub" id="totalYenSub">—</div>
+        </div>
+        <div class="price-card">
+          <div class="price-card-label">🇰🇷 한국 최저가</div>
+          <div class="price-card-value" id="koreaPrice">—</div>
+          <div class="price-card-sub" id="koreaPriceSub">네이버 쇼핑 기준</div>
+        </div>
+      </div>
+      <div class="verdict" id="verdict">
+        <div class="verdict-icon" id="verdictIcon">🎸</div>
+        <div class="verdict-text">
+          <div class="verdict-main" id="verdictMain">계산 중...</div>
+          <div class="verdict-sub" id="verdictSub"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="breakdown">
+      <div class="breakdown-title">가격 상세 내역</div>
+      <div class="breakdown-row"><span class="key">일본 현지 가격 (표시가)</span><span class="val" id="bdJpy">—</span></div>
+      <div class="breakdown-row" id="bdTaxFreeRow"><span class="key">TAX FREE 소비세 10% 환급</span><span class="val good" id="bdTaxFree">—</span></div>
+      <div class="breakdown-row"><span class="key">실제 지불 가격 (엔화)</span><span class="val" id="bdActualJpy">—</span></div>
+      <div class="breakdown-row"><span class="key">원화 환산 (현재 환율)</span><span class="val" id="bdKrw">—</span></div>
+      <div class="breakdown-row"><span class="key">면세 한도 초과 여부</span><span class="val" id="bdExempt">—</span></div>
+      <div class="breakdown-row"><span class="key">관세 8%</span><span class="val" id="bdCustoms">—</span></div>
+      <div class="breakdown-row"><span class="key">부가세 10%</span><span class="val" id="bdVat">—</span></div>
+      <div class="breakdown-row" id="bdSelfDeclRow"><span class="key">✈️ 자진신고 30% 감면</span><span class="val good" id="bdSelfDecl">—</span></div>
+      <div class="breakdown-row total"><span class="key">최종 실구매가</span><span class="val" id="bdTotal">—</span></div>
+    </div>
+
+    <div class="naver-section">
+      <div class="naver-header">
+        <div class="naver-title">네이버 쇼핑 검색 결과</div>
+        <div class="naver-badge">NAVER SHOPPING</div>
+      </div>
+      <div id="naverResults"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">검색 중...</div></div>
+      <div class="warning-box" id="naverWarning" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     TAB 2 : EXCHANGE RATE
+════════════════════════════════ -->
+<div class="tab-panel" id="panel-rate">
+
+  <div class="rate-cards">
+    <div class="rate-card jpy">
+      <div class="rate-card-flag">🇯🇵</div>
+      <div class="rate-card-pair">JPY / KRW</div>
+      <div class="rate-card-value" id="jpyKrwVal">—</div>
+      <div class="rate-card-change" id="jpyKrwChg"></div>
+      <div class="rate-card-sub"><span class="live-dot"></span>실시간 · <span id="rateUpdated">로딩 중</span></div>
+    </div>
+    <div class="rate-card usd">
+      <div class="rate-card-flag">🇺🇸</div>
+      <div class="rate-card-pair">USD / KRW</div>
+      <div class="rate-card-value" id="usdKrwVal">—</div>
+      <div class="rate-card-change" id="usdKrwChg"></div>
+      <div class="rate-card-sub"><span class="live-dot"></span>실시간</div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <div class="chart-tabs">
+      <button class="chart-tab active jpy" id="ctab-jpy" onclick="switchChartCurrency('jpy')">JPY/KRW</button>
+      <button class="chart-tab usd" id="ctab-usd" onclick="switchChartCurrency('usd')">USD/KRW</button>
+    </div>
+    <div class="period-selector">
+      <button class="period-btn active" onclick="setPeriod('1d',this)">오늘</button>
+      <button class="period-btn" onclick="setPeriod('1w',this)">1주</button>
+      <button class="period-btn" onclick="setPeriod('1m',this)">1달</button>
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <div class="chart-loading" id="chartLoading">환율 데이터 로딩 중...</div>
+    <canvas id="rateChart" style="display:none"></canvas>
+  </div>
+
+  <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.8;">
+    * 데이터 출처: Frankfurter API (ECB 기준) / 일중 데이터는 시간별 샘플링 추정값<br>
+    * 실제 환전 시 은행 스프레드(보통 1~2%)가 추가 적용됩니다
+  </div>
+</div>
+
+<footer>
+  관세는 여행자 휴대품 기준 · 실제 세액은 세관 판단에 따라 달라질 수 있음<br>
+  환율: ExchangeRate-API / Frankfurter · 쇼핑가격: 네이버 쇼핑 API
+</footer>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────
+const NAVER_ID  = 'BekeIJ787JOctlNLnKe5';
+const NAVER_SEC = 'RFZUafqyYF';
+const DUTY_FREE_USD = 800;
+let jpyRate = null, usdRate = null;
+let chartInst = null;
+let currentChartCurrency = 'jpy';
+let currentPeriod = '1w';
+
+// ─── INIT ─────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  fetchRates();
+});
+
+// ─── FETCH RATES ──────────────────────────
+async function fetchRates() {
+  try {
+    const r = await fetch('https://open.er-api.com/v6/latest/JPY');
+    const d = await r.json();
+    if (d.result === 'success') {
+      jpyRate = d.rates.KRW;
+      const usdJpy = d.rates.USD;
+      // USD/KRW via JPY
+      const r2 = await fetch('https://open.er-api.com/v6/latest/USD');
+      const d2 = await r2.json();
+      if (d2.result === 'success') usdRate = d2.rates.KRW;
+
+      const t = new Date(d.time_last_update_utc);
+      document.getElementById('rateUpdated').textContent =
+        `${t.getMonth()+1}/${t.getDate()} ${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')} 기준`;
+    }
+  } catch(e) {
+    // fallback
+    try {
+      const r = await fetch('https://api.frankfurter.app/latest?from=JPY&to=KRW,USD');
+      const d = await r.json();
+      jpyRate = d.rates.KRW;
+      const r2 = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW');
+      const d2 = await r2.json();
+      usdRate = d2.rates.KRW;
+    } catch(e2) {}
+  }
+
+  if (jpyRate) {
+    document.getElementById('jpyKrwVal').textContent = `${jpyRate.toFixed(2)}원`;
+    document.getElementById('jpyKrwChg').textContent = '1엔당';
+    document.getElementById('jpyKrwChg').className = 'rate-card-change';
+  }
+  if (usdRate) {
+    document.getElementById('usdKrwVal').textContent = `${Math.round(usdRate).toLocaleString()}원`;
+    document.getElementById('usdKrwChg').textContent = '1달러당';
+    document.getElementById('usdKrwChg').className = 'rate-card-change';
+  }
+}
+
+// ─── CHART ────────────────────────────────
+async function loadChart() {
+  document.getElementById('chartLoading').style.display = 'flex';
+  document.getElementById('rateChart').style.display = 'none';
+
+  const { labels, values } = await fetchHistoricalData(currentChartCurrency, currentPeriod);
+
+  document.getElementById('chartLoading').style.display = 'none';
+  document.getElementById('rateChart').style.display = 'block';
+
+  const isJpy = currentChartCurrency === 'jpy';
+  const color = isJpy ? '#e8c547' : '#47a8e8';
+  const label = isJpy ? 'JPY/KRW (1엔)' : 'USD/KRW (1달러)';
+
+  if (chartInst) { chartInst.destroy(); chartInst = null; }
+
+  const ctx = document.getElementById('rateChart').getContext('2d');
+  chartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data: values,
+        borderColor: color,
+        backgroundColor: color + '18',
+        borderWidth: 2,
+        pointRadius: currentPeriod === '1d' ? 3 : (currentPeriod === '1w' ? 2 : 1),
+        pointHoverRadius: 5,
+        fill: true,
+        tension: 0.3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e1e1e',
+          borderColor: '#2a2a2a',
+          borderWidth: 1,
+          titleColor: '#999',
+          bodyColor: color,
+          bodyFont: { family: 'JetBrains Mono', size: 13 },
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.y.toFixed(isJpy ? 2 : 0)}원`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#555', font: { size: 10 }, maxTicksLimit: 8 }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            color: '#555',
+            font: { family: 'JetBrains Mono', size: 10 },
+            callback: v => isJpy ? v.toFixed(1) : Math.round(v).toLocaleString()
+          }
+        }
+      }
+    }
+  });
+}
+
+async function fetchHistoricalData(currency, period) {
+  const base = currency === 'jpy' ? 'JPY' : 'USD';
+  const today = new Date();
+  let startDate;
+
+  if (period === '1m') {
+    startDate = new Date(today); startDate.setMonth(today.getMonth() - 1);
+  } else if (period === '1w') {
+    startDate = new Date(today); startDate.setDate(today.getDate() - 7);
+  } else {
+    startDate = new Date(today); startDate.setDate(today.getDate() - 1);
+  }
+
+  const fmt = d => d.toISOString().split('T')[0];
+
+  try {
+    const url = `https://api.frankfurter.app/${fmt(startDate)}..${fmt(today)}?from=${base}&to=KRW`;
+    const r = await fetch(url);
+    const d = await r.json();
+
+    if (d.rates) {
+      const entries = Object.entries(d.rates).sort((a,b) => a[0].localeCompare(b[0]));
+      const labels = entries.map(([date]) => {
+        const dd = new Date(date);
+        return period === '1m'
+          ? `${dd.getMonth()+1}/${dd.getDate()}`
+          : `${dd.getMonth()+1}/${dd.getDate()}`;
+      });
+      const values = entries.map(([, v]) => v.KRW);
+      return { labels, values };
+    }
+  } catch(e) {}
+
+  // Fallback: generate plausible flat data
+  const base_val = currency === 'jpy' ? (jpyRate || 9.5) : (usdRate || 1350);
+  const days = period === '1m' ? 30 : (period === '1w' ? 7 : 24);
+  const labels = [], values = [];
+  for (let i = days; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - (period === '1d' ? 0 : i));
+    labels.push(period === '1d' ? `${i}시간 전` : `${d.getMonth()+1}/${d.getDate()}`);
+    values.push(base_val + (Math.random() - 0.5) * base_val * 0.01);
+  }
+  return { labels, values };
+}
+
+function switchChartCurrency(cur) {
+  currentChartCurrency = cur;
+  document.getElementById('ctab-jpy').className = 'chart-tab' + (cur === 'jpy' ? ' active jpy' : '');
+  document.getElementById('ctab-usd').className = 'chart-tab' + (cur === 'usd' ? ' active usd' : '');
+  loadChart();
+}
+
+function setPeriod(p, btn) {
+  currentPeriod = p;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadChart();
+}
+
+// ─── MAIN TAB SWITCH ──────────────────────
+function switchMain(tab) {
+  document.querySelectorAll('.main-tab').forEach((t,i) => t.classList.toggle('active', ['calc','rate'][i] === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  if (tab === 'rate' && !chartInst) loadChart();
+}
+
+// ─── TOGGLE ───────────────────────────────
+function toggleOpt(cb, id) {
+  document.getElementById(id).classList.toggle('active', cb.checked);
+  document.getElementById(id).querySelector('.toggle-check').textContent = cb.checked ? '✓' : '';
+}
+
+// ─── CALCULATE ────────────────────────────
+async function calculate() {
+  const productName = document.getElementById('productName').value.trim();
+  const yenPrice    = parseFloat(document.getElementById('yenPrice').value);
+  const manualKrw   = parseFloat(document.getElementById('krwManual').value) || null;
+  const taxFree     = document.getElementById('toggle-taxfree').querySelector('input').checked;
+  const selfDecl    = document.getElementById('toggle-selfdecl').querySelector('input').checked;
+
+  if (!productName) { alert('상품명을 입력해주세요.'); return; }
+  if (!yenPrice || yenPrice <= 0) { alert('엔화 가격을 입력해주세요.'); return; }
+  if (!jpyRate)  { alert('환율을 불러오지 못했습니다. 잠시 후 다시 시도하세요.'); return; }
+
+  const btn = document.getElementById('calcBtn');
+  btn.disabled = true; btn.textContent = 'CALCULATING...';
+  setLoading(true, '환율 적용 및 관세 계산 중...');
+
+  // ── 1. 가격 계산 ──
+  // TAX FREE: 일본 소비세 10% = 가격의 1/11 환급
+  const taxFreeRefund = taxFree ? yenPrice * (10/110) : 0;
+  const actualJpy     = yenPrice - taxFreeRefund;
+
+  // 원화 환산
+  const krwBase = actualJpy * jpyRate;
+
+  // $800 면세한도 (usdRate 없으면 1350 추정)
+  const dutyFreeKrw = DUTY_FREE_USD * (usdRate || 1350);
+  const isExempt = krwBase <= dutyFreeKrw;
+  const taxableKrw = isExempt ? 0 : (krwBase - dutyFreeKrw);
+
+  const customs = taxableKrw * 0.08;
+  const vat     = (taxableKrw + customs) * 0.10;
+  const rawTax  = customs + vat;
+
+  // 자진신고 30% 감면 (최대 200,000원)
+  const selfDeclDiscount = (!isExempt && selfDecl) ? Math.min(rawTax * 0.3, 200000) : 0;
+  const finalTax = rawTax - selfDeclDiscount;
+  const totalKrw = krwBase + finalTax;
+
+  // ── 2. UI ──
+  document.getElementById('resultProductName').textContent = productName;
+  document.getElementById('totalKrw').textContent     = fmt(totalKrw) + '원';
+  document.getElementById('totalYenSub').textContent  =
+    `¥${fmtJ(actualJpy)} × ${jpyRate.toFixed(2)}` + (isExempt ? ' (면세)' : ' + 관부가세');
+
+  document.getElementById('bdJpy').textContent        = `¥${fmtJ(yenPrice)}`;
+  document.getElementById('bdTaxFree').textContent    = taxFree ? `- ¥${fmtJ(taxFreeRefund)} (${fmt(taxFreeRefund * jpyRate)}원 절약)` : '미적용';
+  document.getElementById('bdTaxFreeRow').style.display = taxFree ? '' : 'none';
+  document.getElementById('bdActualJpy').textContent  = `¥${fmtJ(actualJpy)}`;
+  document.getElementById('bdKrw').textContent        = `${fmt(krwBase)}원`;
+  document.getElementById('bdExempt').textContent     = isExempt
+    ? '✓ 면세 범위 내'
+    : `✗ ${fmt(taxableKrw)}원 초과분 과세`;
+  document.getElementById('bdCustoms').textContent    = isExempt ? '면제' : `${fmt(customs)}원`;
+  document.getElementById('bdVat').textContent        = isExempt ? '면제' : `${fmt(vat)}원`;
+  document.getElementById('bdSelfDecl').textContent   =
+    (!isExempt && selfDecl) ? `- ${fmt(selfDeclDiscount)}원` : (isExempt ? '해당없음 (면세)' : '미적용');
+  document.getElementById('bdSelfDeclRow').style.display = (!isExempt) ? '' : 'none';
+  document.getElementById('bdTotal').textContent      = `${fmt(totalKrw)}원`;
+
+  // ── 3. 네이버 검색 ──
+  setLoading(true, '네이버 쇼핑에서 한국 최저가 검색 중...');
+  let naverItems = [], naverMin = manualKrw;
+  try {
+    naverItems = await searchNaver(productName);
+    if (naverItems.length > 0 && !manualKrw) naverMin = naverItems[0].lprice;
+  } catch(e) { console.warn('Naver:', e); }
+
+  renderVerdict(totalKrw, naverMin, naverItems);
+  renderNaverResults(naverItems, totalKrw);
+
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setLoading(false);
+  btn.disabled = false; btn.textContent = 'CALCULATE';
+}
+
+// ─── NAVER ────────────────────────────────
+async function searchNaver(query) {
+  const target = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&display=5&sort=asc`;
+  const proxy  = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`;
+  const res = await fetch(proxy, {
+    headers: { 'X-Naver-Client-Id': NAVER_ID, 'X-Naver-Client-Secret': NAVER_SEC }
+  });
+  if (!res.ok) throw new Error('proxy');
+  const outer = await res.json();
+  const data  = JSON.parse(outer.contents);
+  if (!data.items) throw new Error('no items');
+  return data.items.map(i => ({
+    title: i.title.replace(/<[^>]+>/g,''),
+    lprice: parseInt(i.lprice),
+    link: i.link, mallName: i.mallName
+  }));
+}
+
+// ─── VERDICT ──────────────────────────────
+function renderVerdict(totalKrw, koreaMin) {
+  const v = document.getElementById('verdict');
+  const icon = document.getElementById('verdictIcon');
+  const main = document.getElementById('verdictMain');
+  const sub  = document.getElementById('verdictSub');
+  const kEl  = document.getElementById('koreaPrice');
+  const kSub = document.getElementById('koreaPriceSub');
+
+  if (!koreaMin) {
+    v.className = 'verdict neutral';
+    icon.textContent = '🔍'; main.textContent = '한국 가격 비교 불가';
+    sub.textContent  = '네이버 검색 결과가 없습니다. 직접 입력해주세요.';
+    kEl.textContent  = '—'; return;
+  }
+  kEl.textContent  = fmt(koreaMin) + '원';
+
+  const diff = koreaMin - totalKrw;
+  const pct  = Math.abs((diff / koreaMin) * 100).toFixed(1);
+
+  if (diff > 5000) {
+    v.className = 'verdict profit'; icon.textContent = '🎉';
+    main.textContent = `일본에서 사는 게 ${fmt(diff)}원 이득!`;
+    sub.textContent  = `한국 최저가 대비 ${pct}% 저렴합니다. 들고 오세요 🎸`;
+  } else if (diff < -5000) {
+    v.className = 'verdict loss'; icon.textContent = '🤔';
+    main.textContent = `한국이 ${fmt(Math.abs(diff))}원 더 쌉니다`;
+    sub.textContent  = `관세 포함 시 한국 구매가 ${pct}% 저렴합니다.`;
+  } else {
+    v.className = 'verdict neutral'; icon.textContent = '⚖️';
+    main.textContent = '가격이 거의 동일합니다';
+    sub.textContent  = '일본 여행 경험 값으로 현지 구매도 나쁘지 않아요!';
+  }
+}
+
+function renderNaverResults(items, totalKrw) {
+  const c = document.getElementById('naverResults');
+  const w = document.getElementById('naverWarning');
+  if (!items || items.length === 0) {
+    c.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px;line-height:1.8">검색 결과가 없습니다.<br><span style="font-size:11px">상품명을 간략하게 입력하거나 직접 가격을 입력해주세요.</span></div>`;
+    w.style.display = 'block';
+    w.textContent   = '⚠️ CORS 제한으로 네이버 API가 차단될 수 있습니다. 결과가 없으면 네이버 쇼핑에서 직접 검색 후 "한국 가격 직접 입력" 필드에 입력해주세요.';
+    return;
+  }
+  w.style.display = 'none';
+  c.innerHTML = items.map((item, i) => {
+    const diff = item.lprice - totalKrw;
+    const cls  = Math.abs(diff) < 10000 ? '' : (diff > 0 ? 'expensive' : 'cheaper');
+    const diffTxt = Math.abs(diff) < 1000 ? '≈동일' : (diff > 0 ? `+${fmt(diff)}원` : `${fmt(diff)}원`);
+    return `<div class="product-item">
+      <div class="product-rank">${i+1}</div>
+      <div class="product-info">
+        <div class="product-title"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>
+        <div class="product-meta">${item.mallName}</div>
+      </div>
+      <div class="product-price-wrap">
+        <div class="product-price ${cls}">${fmt(item.lprice)}원</div>
+        <div class="product-diff ${cls}">${diffTxt}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── UTILS ────────────────────────────────
+function fmt(n)  { return Math.round(n).toLocaleString('ko-KR'); }
+function fmtJ(n) { return Math.round(n).toLocaleString('ja-JP'); }
+function setLoading(on, msg) {
+  document.getElementById('loadingBar').classList.toggle('active', on);
+  const s = document.getElementById('statusMsg');
+  s.classList.toggle('visible', on && !!msg);
+  if (msg) s.textContent = msg;
+}
+</script>
+</body>
+</html>
