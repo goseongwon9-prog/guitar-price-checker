@@ -219,12 +219,105 @@ input::placeholder { color: var(--muted); }
 
 footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 48px; line-height: 2; }
 
+/* 최근 검색 */
+.recent-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
+.recent-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.recent-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; transition: border-color 0.15s, background 0.15s; min-width: 0; max-width: 100%; }
+.recent-chip:hover { border-color: var(--accent); background: rgba(232,197,71,0.04); }
+.recent-chip-name { font-size: 12px; color: var(--text); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-chip-meta { font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+
+/* 비교 라디오 — 사용자가 직접 비교 대상 선택 */
+.compare-radio { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.compare-label {
+  width: 22px; height: 22px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  margin-top: 2px;
+}
+.compare-label:hover { border-color: var(--muted); }
+.compare-radio:checked + .compare-label {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.compare-radio:checked + .compare-label::after {
+  content: '✓';
+  color: #0d0d0d;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+.product-item.is-rep { background: rgba(232,197,71,0.04); border-radius: 6px; padding: 12px 8px; margin: 4px -8px; }
+.product-item.is-rep .product-title a { color: var(--accent); font-weight: 600; }
+.compare-col-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+
 @media (max-width: 520px) {
   .input-row { grid-template-columns: 1fr; }
   .price-grid { grid-template-columns: 1fr; }
   .rate-cards { grid-template-columns: 1fr; }
-  h1 { font-size: 48px; }
+  h1 { font-size: 42px; letter-spacing: 1px; }
+  .header-desc { font-size: 11px; }
   .main-tab { font-size: 12px; padding: 8px 6px; }
+  header { margin-bottom: 24px; padding-bottom: 20px; }
+
+  .container { padding: 24px 14px 60px; }
+  .info-box { padding: 11px 13px; font-size: 11px; line-height: 1.6; }
+  .input-section { padding: 18px 16px; }
+  .section-label { font-size: 10px; letter-spacing: 1.5px; margin-bottom: 14px; }
+  label { font-size: 11px; }
+  input[type="text"], input[type="number"] { font-size: 14px; padding: 11px 14px; }
+  .yen-wrap input { padding-left: 36px; }
+
+  .toggle-group { gap: 6px; }
+  .toggle-item { padding: 8px 11px; flex: 1 1 auto; min-width: 0; }
+  .toggle-label { font-size: 11px; }
+
+  .customs-info { padding: 11px 13px; }
+  .customs-row { font-size: 11px; line-height: 1.9; gap: 8px; }
+  .customs-row span:last-child { font-size: 11px; white-space: nowrap; }
+
+  .calc-btn { font-size: 16px; padding: 14px; letter-spacing: 1.5px; }
+
+  /* 결과 영역 */
+  .result-hero { padding: 18px 16px; }
+  .product-name-display { font-size: 15px; margin-bottom: 16px; word-break: break-word; }
+  .price-card { padding: 13px 14px; }
+  .price-card-label { font-size: 10px; }
+  .price-card-value { font-size: 17px; }
+  .price-card-sub { font-size: 10px; word-break: break-word; }
+
+  .verdict { padding: 14px 14px; gap: 10px; }
+  .verdict-icon { font-size: 22px; }
+  .verdict-main { font-size: 13px; line-height: 1.4; }
+  .verdict-sub { font-size: 11px; line-height: 1.4; }
+
+  .breakdown { padding: 18px 16px; }
+  .breakdown-row { font-size: 12px; padding: 8px 0; gap: 10px; }
+  .breakdown-row .key { flex: 1 1 auto; min-width: 0; }
+  .breakdown-row .val { font-size: 12px; white-space: nowrap; }
+  .breakdown-row.total .key { font-size: 13px; }
+  .breakdown-row.total .val { font-size: 15px; }
+
+  .naver-section { padding: 18px 16px; }
+  .product-item { gap: 8px; padding: 10px 0; }
+  .product-rank { width: 16px; font-size: 10px; }
+  .product-title { font-size: 12px; white-space: normal; word-break: break-word; }
+  .product-meta { font-size: 10px; }
+  .product-price { font-size: 13px; }
+  .product-diff { font-size: 9px; }
+  .product-item.is-rep { padding: 10px 6px; margin: 4px -6px; }
+  .compare-label { width: 20px; height: 20px; }
+  .compare-radio:checked + .compare-label::after { font-size: 12px; }
+  .compare-col-header { font-size: 10px; }
+
+  .recent-section { padding: 14px 16px; }
+  .recent-chip { padding: 7px 10px; }
+  .recent-chip-name { font-size: 11px; max-width: 140px; }
+  .recent-chip-meta { font-size: 9px; }
 }
 </style>
 </head>
@@ -253,11 +346,16 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
     ✈️ <strong>자진신고 시 세금 30% 감면 (최대 20만원)</strong> — 비행기 안 세관신고서 미리 작성 후 자진신고 카운터 이용
   </div>
 
+  <div class="recent-section" id="recentSection" style="display:none">
+    <div class="section-label" style="margin-bottom:12px">🕘 최근 검색 (클릭해서 불러오기)</div>
+    <div class="recent-chips" id="recentChips"></div>
+  </div>
+
   <div class="input-section">
     <div class="section-label">상품 정보 입력</div>
 
     <div class="field">
-      <label>상품명 (한국어로 입력하면 네이버 검색이 정확해요)</label>
+      <label>상품명</label>
       <input type="text" id="productName" placeholder="예: Fender Player Stratocaster Sunburst" />
     </div>
 
@@ -322,9 +420,9 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
           <div class="price-card-sub" id="totalYenSub">—</div>
         </div>
         <div class="price-card">
-          <div class="price-card-label">🇰🇷 한국 최저가</div>
+          <div class="price-card-label">🇰🇷 한국 비교 가격</div>
           <div class="price-card-value" id="koreaPrice">—</div>
-          <div class="price-card-sub" id="koreaPriceSub">6개 악기몰 최저가</div>
+          <div class="price-card-sub" id="koreaPriceSub">아래 목록에서 비교 대상 선택 가능</div>
         </div>
       </div>
       <div class="verdict" id="verdict">
@@ -388,9 +486,11 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
       <button class="chart-tab usd" id="ctab-usd" onclick="switchChartCurrency('usd')">USD/KRW</button>
     </div>
     <div class="period-selector">
-      <button class="period-btn active" onclick="setPeriod('1d',this)">오늘</button>
-      <button class="period-btn" onclick="setPeriod('1w',this)">1주</button>
-      <button class="period-btn" onclick="setPeriod('1m',this)">1달</button>
+      <button class="period-btn" onclick="setPeriod('3h',this)">3H</button>
+      <button class="period-btn" onclick="setPeriod('12h',this)">12H</button>
+      <button class="period-btn active" onclick="setPeriod('1d',this)">1D</button>
+      <button class="period-btn" onclick="setPeriod('1w',this)">1W</button>
+      <button class="period-btn" onclick="setPeriod('1mo',this)">1M</button>
     </div>
   </div>
 
@@ -400,7 +500,7 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
   </div>
 
   <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.8;">
-    * 데이터 출처: Frankfurter API (ECB 기준) / 일중 데이터는 시간별 샘플링 추정값<br>
+    * 데이터 출처: <span id="rateSource">로딩 중...</span><br>
     * 실제 환전 시 은행 스프레드(보통 1~2%)가 추가 적용됩니다
   </div>
 </div>
@@ -420,52 +520,137 @@ const DUTY_FREE_USD = 800;
 let jpyRate = null, usdRate = null;
 let chartInst = null;
 let currentChartCurrency = 'jpy';
-let currentPeriod = '1w';
+let currentPeriod = '1d';
 
 // ─── INIT ─────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   fetchRates();
+  renderRecentSearches();
 });
 
-// ─── FETCH RATES ──────────────────────────
-async function fetchRates() {
-  try {
-    const r = await fetch('https://open.er-api.com/v6/latest/JPY');
-    const d = await r.json();
-    if (d.result === 'success') {
-      jpyRate = d.rates.KRW;
-      const usdJpy = d.rates.USD;
-      // USD/KRW via JPY
-      const r2 = await fetch('https://open.er-api.com/v6/latest/USD');
-      const d2 = await r2.json();
-      if (d2.result === 'success') usdRate = d2.rates.KRW;
+// ─── 최근 검색 (localStorage) ────────────────────────────────
+const RECENT_KEY = 'gpc_recent_v1';
+const RECENT_MAX = 8;
 
-      const t = new Date(d.time_last_update_utc);
-      document.getElementById('rateUpdated').textContent =
-        `${t.getMonth()+1}/${t.getDate()} ${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')} 기준`;
+function loadRecent() {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveRecentSearch(entry) {
+  const list = loadRecent();
+  // 같은 검색어 + 같은 엔화가는 중복 제거 (최신으로 갱신)
+  const filtered = list.filter(x => !(x.q === entry.q && x.yen === entry.yen));
+  filtered.unshift(entry);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(filtered.slice(0, RECENT_MAX)));
+}
+function renderRecentSearches() {
+  const list = loadRecent();
+  const sec = document.getElementById('recentSection');
+  const chips = document.getElementById('recentChips');
+  if (!sec || !chips) return;
+  if (list.length === 0) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  chips.innerHTML = list.map((e, i) => `
+    <div class="recent-chip" onclick="restoreRecent(${i})">
+      <div class="recent-chip-name">${escapeHtml(e.q)}</div>
+      <div class="recent-chip-meta">¥${fmtJ(e.yen)} · ${fmt(e.total)}원</div>
+    </div>
+  `).join('');
+}
+function restoreRecent(i) {
+  const list = loadRecent();
+  const e = list[i];
+  if (!e) return;
+  document.getElementById('productName').value = e.q || '';
+  document.getElementById('yenPrice').value = e.yen || '';
+  // 토글 상태 복원
+  setToggle('toggle-taxfree', !!e.taxFree);
+  setToggle('toggle-selfdecl', !!e.selfDecl);
+  calculate();
+}
+function setToggle(id, on) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const cb = el.querySelector('input');
+  cb.checked = on;
+  el.classList.toggle('active', on);
+  el.querySelector('.toggle-check').textContent = on ? '✓' : '';
+}
+
+// ─── FETCH RATES ──────────────────────────
+// 1차: Worker /rates (Yahoo Finance, 분 단위 갱신)
+// 2차: open.er-api.com (일 1회)
+// 3차: frankfurter (ECB 평일 종가)
+async function fetchRates() {
+  let source = null;
+  let updated = null;
+
+  // 1차: Worker
+  try {
+    const r = await fetch(`${SHOP_WORKER_URL}/rates`);
+    if (r.ok) {
+      const d = await r.json();
+      if (!d.error && d.jpyKrw && d.usdKrw) {
+        jpyRate = d.jpyKrw;
+        usdRate = d.usdKrw;
+        source = d.source === 'yahoo-finance' ? 'Yahoo Finance (분 단위)'
+               : d.source === 'naver-finance' ? 'Naver Finance (실시간)'
+               : d.source;
+        updated = new Date(d.updated);
+      }
     }
-  } catch(e) {
-    // fallback
+  } catch(e) { console.warn('Worker /rates 실패:', e); }
+
+  // 2차: open.er-api.com
+  if (!jpyRate || !usdRate) {
+    try {
+      const r = await fetch('https://open.er-api.com/v6/latest/JPY');
+      const d = await r.json();
+      if (d.result === 'success') {
+        jpyRate = jpyRate || d.rates.KRW;
+        const r2 = await fetch('https://open.er-api.com/v6/latest/USD');
+        const d2 = await r2.json();
+        if (d2.result === 'success') usdRate = usdRate || d2.rates.KRW;
+        source = source || 'ExchangeRate-API (일 1회)';
+        updated = updated || new Date(d.time_last_update_utc);
+      }
+    } catch(e) {}
+  }
+
+  // 3차: frankfurter (ECB)
+  if (!jpyRate || !usdRate) {
     try {
       const r = await fetch('https://api.frankfurter.app/latest?from=JPY&to=KRW,USD');
       const d = await r.json();
-      jpyRate = d.rates.KRW;
+      jpyRate = jpyRate || d.rates.KRW;
       const r2 = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW');
       const d2 = await r2.json();
-      usdRate = d2.rates.KRW;
+      usdRate = usdRate || d2.rates.KRW;
+      source = source || 'Frankfurter / ECB (평일 종가)';
     } catch(e2) {}
   }
 
+  // 정밀도 정규화: JPY는 3자리, USD는 2자리 (이 값으로 표시도 하고 계산에도 사용)
+  if (jpyRate) jpyRate = +jpyRate.toFixed(3);
+  if (usdRate) usdRate = +usdRate.toFixed(2);
+
+  // UI 갱신
   if (jpyRate) {
-    document.getElementById('jpyKrwVal').textContent = `${jpyRate.toFixed(2)}원`;
+    document.getElementById('jpyKrwVal').textContent = `${jpyRate.toFixed(3)}원`;
     document.getElementById('jpyKrwChg').textContent = '1엔당';
     document.getElementById('jpyKrwChg').className = 'rate-card-change';
   }
   if (usdRate) {
-    document.getElementById('usdKrwVal').textContent = `${Math.round(usdRate).toLocaleString()}원`;
+    document.getElementById('usdKrwVal').textContent = `${usdRate.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}원`;
     document.getElementById('usdKrwChg').textContent = '1달러당';
     document.getElementById('usdKrwChg').className = 'rate-card-change';
   }
+  if (updated) {
+    const t = updated;
+    document.getElementById('rateUpdated').textContent =
+      `${t.getMonth()+1}/${t.getDate()} ${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')} 기준`;
+  }
+  document.getElementById('rateSource').textContent = source || '환율 데이터 없음';
 
   updateDutyFreeDisplay();
 }
@@ -474,6 +659,7 @@ function updateDutyFreeDisplay() {
   const el = document.getElementById('dutyFreeLimitDisplay');
   const failRow = document.getElementById('rateFailRow');
   if (usdRate) {
+    // usdRate가 2자리 정밀도라 결과 KRW도 소수 약간 — 원 단위로 반올림 표시
     const krw = Math.round(DUTY_FREE_USD * usdRate);
     el.textContent = `$800 (약 ₩${krw.toLocaleString('ko-KR')})`;
     failRow.style.display = 'none';
@@ -500,22 +686,79 @@ async function loadChart() {
 
   if (chartInst) { chartInst.destroy(); chartInst = null; }
 
+  // 포인트 크기: 데이터 개수에 반비례 (많을수록 작아짐), 최대 3.5 ~ 최소 2
+  // 9개 → 3.5 / 12개 → 2.8 / 14개 → 2.5 / 15개 → 2.4
+  const n = values.length || 12;
+  const pointRadius = Math.max(2, Math.min(3.5, 32 / n));
+
+  // Y축 자동 스케일링: 데이터 최저/최고를 정확히 잡으려면 패딩이 필요
+  // 변동폭 작아도 최소 절대값 패딩 보장 (JPY는 0.02, USD는 5원)
+  const minVal = Math.min(...values);
+  const maxVal = Math.max(...values);
+  const range = maxVal - minVal;
+  const minPad = isJpy ? 0.02 : 5;
+  const padding = Math.max(range * 0.2, minPad);  // 20% 또는 절대값 최소
+
+  // 최저/최고 지점 인덱스 (값이 같으면 -1로 마킹 스킵)
+  const minIdx = range > 0 ? values.indexOf(minVal) : -1;
+  const maxIdx = range > 0 ? values.indexOf(maxVal) : -1;
+  // 평균값 및 마지막(현재) 지점 — tooltip에서 사용
+  const lastIdx = values.length - 1;
+  const avgVal = values.reduce((a, b) => a + b, 0) / values.length;
+  const periodLabels = {
+    '3h': '지난 3시간', '12h': '지난 12시간', '1d': '지난 하루',
+    '1w': '지난 1주일', '1mo': '지난 1달'
+  };
+  const periodLabel = periodLabels[currentPeriod] || '지난 기간';
+
+  // 각 포인트마다 색/크기/테두리 배열로 지정
+  const COLOR_MIN = '#47a8e8';  // 최저 → 파랑
+  const COLOR_MAX = '#e84747';  // 최고 → 빨강
+  const ptBg = values.map((_, i) =>
+    i === minIdx ? COLOR_MIN : i === maxIdx ? COLOR_MAX : color);
+  const ptBorder = values.map((_, i) =>
+    i === minIdx || i === maxIdx ? '#ffffff' : color);
+  const ptRadiusArr = values.map((_, i) =>
+    i === minIdx || i === maxIdx ? pointRadius * 1.8 : pointRadius);
+  const ptBorderWidth = values.map((_, i) =>
+    i === minIdx || i === maxIdx ? 2 : 1);
+
   const ctx = document.getElementById('rateChart').getContext('2d');
   chartInst = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
-      datasets: [{
-        label,
-        data: values,
-        borderColor: color,
-        backgroundColor: color + '18',
-        borderWidth: 2,
-        pointRadius: currentPeriod === '1d' ? 3 : (currentPeriod === '1w' ? 2 : 1),
-        pointHoverRadius: 5,
-        fill: true,
-        tension: 0.3,
-      }]
+      datasets: [
+        {
+          label,
+          data: values,
+          borderColor: color,
+          backgroundColor: color + '18',
+          borderWidth: 2,
+          pointRadius: ptRadiusArr,
+          pointHoverRadius: ptRadiusArr.map(r => r + 2),
+          pointBackgroundColor: ptBg,
+          pointBorderColor: ptBorder,
+          pointBorderWidth: ptBorderWidth,
+          fill: true,
+          tension: 0.3,
+          order: 0
+        },
+        {
+          // 평균선 (점선) — 비교 기준선 시각화
+          label: '평균',
+          data: values.map(() => avgVal),
+          borderColor: 'rgba(240,240,240,0.35)',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderDash: [5, 4],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 1  // 메인 라인 뒤로
+        }
+      ]
     },
     options: {
       responsive: true,
@@ -530,8 +773,34 @@ async function loadChart() {
           titleColor: '#999',
           bodyColor: color,
           bodyFont: { family: 'JetBrains Mono', size: 13 },
+          filter: (item) => item.datasetIndex === 0,  // 평균선 데이터셋은 tooltip에서 제외
           callbacks: {
-            label: ctx => ` ${ctx.parsed.y.toFixed(isJpy ? 2 : 0)}원`
+            label: ctx => {
+              const v = ctx.parsed.y;
+              const valStr = isJpy
+                ? v.toFixed(3)
+                : v.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              let tag = '';
+              if (ctx.dataIndex === minIdx) tag = '🔻 최저 ';
+              else if (ctx.dataIndex === maxIdx) tag = '🔺 최고 ';
+              const lines = [` ${tag}${valStr}원`];
+
+              // 마지막(현재) 포인트면 평균 대비 차이 추가
+              if (ctx.dataIndex === lastIdx) {
+                const diff = v - avgVal;
+                const absDiff = Math.abs(diff);
+                const diffStr = isJpy ? absDiff.toFixed(3) : absDiff.toFixed(2);
+                const threshold = isJpy ? 0.001 : 0.5;
+                if (diff > threshold) {
+                  lines.push(` ${periodLabel} 평균 대비 ${diffStr}원 올랐어요`);
+                } else if (diff < -threshold) {
+                  lines.push(` ${periodLabel} 평균 대비 ${diffStr}원 내렸어요`);
+                } else {
+                  lines.push(` ${periodLabel} 평균과 거의 동일`);
+                }
+              }
+              return lines;
+            }
           }
         }
       },
@@ -541,11 +810,16 @@ async function loadChart() {
           ticks: { color: '#555', font: { size: 10 }, maxTicksLimit: 8 }
         },
         y: {
+          suggestedMin: minVal - padding,
+          suggestedMax: maxVal + padding,
           grid: { color: 'rgba(255,255,255,0.04)' },
           ticks: {
             color: '#555',
             font: { family: 'JetBrains Mono', size: 10 },
-            callback: v => isJpy ? v.toFixed(1) : Math.round(v).toLocaleString()
+            // JPY: 소수 3자리, USD: 소수 2자리
+            callback: v => isJpy
+              ? v.toFixed(3)
+              : v.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
           }
         }
       }
@@ -554,48 +828,52 @@ async function loadChart() {
 }
 
 async function fetchHistoricalData(currency, period) {
-  const base = currency === 'jpy' ? 'JPY' : 'USD';
-  const today = new Date();
-  let startDate;
-
-  if (period === '1m') {
-    startDate = new Date(today); startDate.setMonth(today.getMonth() - 1);
-  } else if (period === '1w') {
-    startDate = new Date(today); startDate.setDate(today.getDate() - 7);
-  } else {
-    startDate = new Date(today); startDate.setDate(today.getDate() - 1);
-  }
-
-  const fmt = d => d.toISOString().split('T')[0];
+  const pair = currency === 'jpy' ? 'JPYKRW' : 'USDKRW';
 
   try {
-    const url = `https://api.frankfurter.app/${fmt(startDate)}..${fmt(today)}?from=${base}&to=KRW`;
+    const url = `${SHOP_WORKER_URL}/rates/history?pair=${pair}&period=${period}`;
     const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    if (!d.data || d.data.length === 0) throw new Error('데이터 없음');
 
-    if (d.rates) {
-      const entries = Object.entries(d.rates).sort((a,b) => a[0].localeCompare(b[0]));
-      const labels = entries.map(([date]) => {
-        const dd = new Date(date);
-        return period === '1m'
-          ? `${dd.getMonth()+1}/${dd.getDate()}`
-          : `${dd.getMonth()+1}/${dd.getDate()}`;
-      });
-      const values = entries.map(([, v]) => v.KRW);
-      return { labels, values };
-    }
-  } catch(e) {}
+    const labels = d.data.map(p => formatChartLabel(p.t, period));
+    const values = d.data.map(p => p.rate);
+    return { labels, values };
+  } catch (e) {
+    console.warn('[Rate history] 실패, 폴백 사용:', e.message);
+  }
 
-  // Fallback: generate plausible flat data
+  // Fallback: 평탄한 추정 데이터
   const base_val = currency === 'jpy' ? (jpyRate || 9.5) : (usdRate || 1350);
-  const days = period === '1m' ? 30 : (period === '1w' ? 7 : 24);
+  const counts = { '3h': 12, '12h': 12, '1d': 12, '1w': 14, '1mo': 22 };
+  const n = counts[period] || 12;
   const labels = [], values = [];
-  for (let i = days; i >= 0; i--) {
-    const d = new Date(today); d.setDate(today.getDate() - (period === '1d' ? 0 : i));
-    labels.push(period === '1d' ? `${i}시간 전` : `${d.getMonth()+1}/${d.getDate()}`);
-    values.push(base_val + (Math.random() - 0.5) * base_val * 0.01);
+  const now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now);
+    if (period === '3h')  d.setMinutes(now.getMinutes() - i * 15);
+    else if (period === '12h') d.setHours(now.getHours() - i);
+    else if (period === '1d')  d.setHours(now.getHours() - i * 2);
+    else if (period === '1w')  d.setHours(now.getHours() - i * 8);
+    else                       d.setDate(now.getDate() - i);
+    labels.push(formatChartLabel(d.getTime(), period));
+    values.push(base_val + (Math.random() - 0.5) * base_val * 0.005);
   }
   return { labels, values };
+}
+
+function formatChartLabel(timestamp, period) {
+  const d = new Date(timestamp);
+  const hh = d.getHours();
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  // 시간 단위 period: 시:분
+  if (period === '3h' || period === '12h' || period === '1d') {
+    return `${hh}:${mm}`;
+  }
+  // 주/월 단위: 월/일
+  return `${d.getMonth()+1}/${d.getDate()}`;
 }
 
 function switchChartCurrency(cur) {
@@ -668,7 +946,7 @@ async function calculate() {
   document.getElementById('resultProductName').textContent = productName;
   document.getElementById('totalKrw').textContent     = fmt(totalKrw) + '원';
   document.getElementById('totalYenSub').textContent  =
-    `¥${fmtJ(actualJpy)} × ${jpyRate.toFixed(2)}` + (isExempt ? ' (면세)' : ' + 관부가세');
+    `¥${fmtJ(actualJpy)} × ${jpyRate.toFixed(3)}` + (isExempt ? ' (면세)' : ' + 관부가세');
 
   document.getElementById('bdJpy').textContent        = `¥${fmtJ(yenPrice)}`;
   document.getElementById('bdTaxFree').textContent    = taxFree ? `- ¥${fmtJ(taxFreeRefund)} (${fmt(taxFreeRefund * jpyRate)}원 절약)` : '미적용';
@@ -686,25 +964,79 @@ async function calculate() {
   document.getElementById('bdTotal').textContent      = `${fmt(totalKrw)}원`;
 
   // ── 3. 한국 악기 쇼핑몰 검색 ──
-  setLoading(true, '한국 악기 쇼핑몰 6곳에서 최저가 검색 중...');
-  let shopItems = [];
+  setLoading(true, '한국 악기 쇼핑몰 6곳에서 검색 중...');
+  let shopItems = [], repItem = null;
   let naverMin = manualKrw, naverError = null;
   try {
     shopItems = await searchNaver(productName);
-    // Worker가 이미 가격순 정렬해서 보냄 → 첫 결과가 최저가
-    if (shopItems.length > 0 && !manualKrw) naverMin = shopItems[0].lprice;
+    // 대표 가격 선정: 최빈가 → 검색어 일치도 → 가격 높은 순
+    repItem = pickRepresentative(shopItems, productName);
+    if (repItem && !manualKrw) naverMin = repItem.lprice;
   } catch(e) {
     console.warn('Shop search:', e);
     naverError = e.message || '알 수 없는 오류';
   }
 
-  renderVerdict(totalKrw, naverMin, shopItems);
-  renderNaverResults(shopItems, totalKrw, naverError, productName);
+  renderVerdict(totalKrw, naverMin, repItem);
+  renderNaverResults(shopItems, totalKrw, naverError, productName, repItem);
+
+  // 성공적 계산이면 최근 검색에 저장
+  if (yenPrice > 0) {
+    saveRecentSearch({
+      q: productName,
+      yen: yenPrice,
+      taxFree, selfDecl,
+      total: totalKrw,
+      kr: naverMin || null,
+      krTitle: repItem?.title || null,
+      krLink: repItem?.link || null,
+      krMall: repItem?.mallName || null,
+      t: Date.now()
+    });
+    renderRecentSearches();
+  }
 
   document.getElementById('results').classList.add('visible');
   document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
   setLoading(false);
   btn.disabled = false; btn.textContent = 'CALCULATE';
+}
+
+// ─── 대표 가격 선정 ────────────────────────────────
+// 1순위: 같은 가격으로 가장 많이 나오는 값 (최빈가)
+// 2순위(빈도 동률시): 제목이 검색어 키워드를 가장 많이 포함하는 상품
+// 3순위(여전히 동률시): 가격이 더 높은 쪽
+function pickRepresentative(items, query) {
+  if (!items || items.length === 0) return null;
+
+  // 검색어를 단어로 쪼개고 짧은(1글자) 단어 제외
+  const queryWords = (query || '').toLowerCase().split(/\s+/).filter(w => w.length > 1);
+  const matchScore = (item) => {
+    const t = (item.title || '').toLowerCase();
+    return queryWords.filter(w => t.includes(w)).length;
+  };
+
+  // 가격별 그룹핑
+  const groups = new Map();
+  for (const item of items) {
+    const arr = groups.get(item.lprice) || [];
+    arr.push(item);
+    groups.set(item.lprice, arr);
+  }
+
+  // 각 그룹에서 대표 후보 1개씩 추리고 정렬
+  const entries = Array.from(groups.entries()).map(([price, group]) => ({
+    price,
+    count: group.length,
+    bestScore: Math.max(...group.map(matchScore)),
+    item: group.reduce((best, cur) => matchScore(cur) > matchScore(best) ? cur : best)
+  }));
+  entries.sort((a, b) =>
+    (b.count - a.count) ||
+    (b.bestScore - a.bestScore) ||
+    (b.price - a.price)
+  );
+  return entries[0].item;
 }
 
 // ─── 한국 악기 쇼핑몰 통합 검색 ────────────────────────────────
@@ -731,7 +1063,7 @@ async function searchNaver(query) {
 }
 
 // ─── VERDICT ──────────────────────────────
-function renderVerdict(totalKrw, koreaMin) {
+function renderVerdict(totalKrw, koreaMin, repItem) {
   const v = document.getElementById('verdict');
   const icon = document.getElementById('verdictIcon');
   const main = document.getElementById('verdictMain');
@@ -743,9 +1075,18 @@ function renderVerdict(totalKrw, koreaMin) {
     v.className = 'verdict neutral';
     icon.textContent = '🔍'; main.textContent = '한국 가격 비교 불가';
     sub.textContent  = '6개 쇼핑몰에서 검색 결과가 없습니다. 직접 입력해주세요.';
-    kEl.textContent  = '—'; return;
+    kEl.textContent  = '—';
+    kSub.textContent = '6개 악기몰 대표 가격';
+    return;
   }
-  kEl.textContent  = fmt(koreaMin) + '원';
+  kEl.textContent = fmt(koreaMin) + '원';
+
+  // 한국 가격 카드 하단에 대표 상품 출처 + 링크 표시
+  if (repItem) {
+    kSub.innerHTML = `<a href="${repItem.link}" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:underline">${escapeHtml(repItem.mallName || '쇼핑몰')} · ${escapeHtml(truncate(repItem.title, 36))}</a>`;
+  } else {
+    kSub.textContent = '6개 악기몰 대표 가격';
+  }
 
   const diff = koreaMin - totalKrw;
   const pct  = Math.abs((diff / koreaMin) * 100).toFixed(1);
@@ -753,19 +1094,24 @@ function renderVerdict(totalKrw, koreaMin) {
   if (diff > 5000) {
     v.className = 'verdict profit'; icon.textContent = '🎉';
     main.textContent = `일본에서 사는 게 ${fmt(diff)}원 이득!`;
-    sub.textContent  = `한국 최저가 대비 ${pct}% 저렴합니다. 들고 오세요 🎸`;
+    sub.textContent  = `선택한 한국 비교 가격 대비 ${pct}% 저렴합니다. 들고 오세요 🎸`;
   } else if (diff < -5000) {
     v.className = 'verdict loss'; icon.textContent = '🤔';
     main.textContent = `한국이 ${fmt(Math.abs(diff))}원 더 쌉니다`;
-    sub.textContent  = `관세 포함 시 한국 구매가 ${pct}% 저렴합니다.`;
+    sub.textContent  = `관세 포함 시 선택한 한국 가격이 ${pct}% 저렴합니다.`;
   } else {
     v.className = 'verdict neutral'; icon.textContent = '⚖️';
     main.textContent = '가격이 거의 동일합니다';
-    sub.textContent  = '일본 여행 경험 값으로 현지 구매도 나쁘지 않아요!';
+    sub.textContent  = '선택한 한국 가격과 큰 차이 없음. 여행 경험 값으로 현지 구매도 나쁘지 않아요!';
   }
 }
 
-function renderNaverResults(items, totalKrw, naverError, query) {
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function truncate(s, n) { return s && s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+function renderNaverResults(items, totalKrw, naverError, query, repItem) {
   const c = document.getElementById('naverResults');
   const w = document.getElementById('naverWarning');
 
@@ -785,15 +1131,26 @@ function renderNaverResults(items, totalKrw, naverError, query) {
   }
 
   w.style.display = 'none';
-  c.innerHTML = items.map((item, i) => {
+
+  // 비교 대상 선택 상태를 setComparison에서 쓸 수 있도록 저장
+  _compareState.items = items;
+  _compareState.totalKrw = totalKrw;
+  const repIdx = items.findIndex(i => repItem && i.link === repItem.link);
+
+  const header = `<div class="compare-col-header"><span>비교 대상 선택 (라디오)</span><span>가격</span></div>`;
+  const list = items.map((item, i) => {
     const diff = item.lprice - totalKrw;
     const cls  = Math.abs(diff) < 10000 ? '' : (diff > 0 ? 'expensive' : 'cheaper');
     const diffTxt = Math.abs(diff) < 1000 ? '≈동일' : (diff > 0 ? `+${fmt(diff)}원` : `${fmt(diff)}원`);
-    return `<div class="product-item">
+    const isSel = i === repIdx;
+    const itemClass = isSel ? 'product-item is-rep' : 'product-item';
+    return `<div class="${itemClass}">
+      <input type="radio" name="cmp" id="cmp-${i}" class="compare-radio" ${isSel ? 'checked' : ''} onchange="setComparison(${i})">
+      <label for="cmp-${i}" class="compare-label" title="비교 대상으로 선택"></label>
       <div class="product-rank">${i+1}</div>
       <div class="product-info">
-        <div class="product-title"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>
-        <div class="product-meta">${item.mallName}</div>
+        <div class="product-title"><a href="${item.link}" target="_blank" rel="noopener">${escapeHtml(item.title)}</a></div>
+        <div class="product-meta">${escapeHtml(item.mallName)}</div>
       </div>
       <div class="product-price-wrap">
         <div class="product-price ${cls}">${fmt(item.lprice)}원</div>
@@ -801,6 +1158,19 @@ function renderNaverResults(items, totalKrw, naverError, query) {
       </div>
     </div>`;
   }).join('');
+  c.innerHTML = header + list;
+}
+
+// 비교 대상 선택 시 호출 — verdict + 비교 가격 카드 즉시 갱신
+let _compareState = { items: [], totalKrw: 0 };
+function setComparison(i) {
+  const item = _compareState.items[i];
+  if (!item) return;
+  renderVerdict(_compareState.totalKrw, item.lprice, item);
+  // 리스트 강조 갱신
+  document.querySelectorAll('#naverResults .product-item').forEach((el, idx) => {
+    el.classList.toggle('is-rep', idx === i);
+  });
 }
 
 // ─── UTILS ────────────────────────────────

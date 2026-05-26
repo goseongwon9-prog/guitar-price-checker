@@ -61,6 +61,17 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() });
 
     const url = new URL(request.url);
+
+    // 실시간 환율 엔드포인트 — Yahoo Finance → Naver Finance fallback
+    if (url.pathname === '/rates') {
+      return await handleRates();
+    }
+
+    // 환율 히스토리 (Yahoo Finance chart API)
+    if (url.pathname === '/rates/history') {
+      return await handleRatesHistory(url);
+    }
+
     const query = url.searchParams.get('query');
     const siteFilter = url.searchParams.get('site');
     const debug = url.searchParams.get('debug');
@@ -88,8 +99,8 @@ export default {
     const respond = debug ? jsonNoCache : json;
     return respond({
       query,
-      siteResults: results,    // 사이트별 결과 (디버깅용)
-      items: allItems.slice(0, 15)  // 통합 가격순 상위 15개
+      siteResults: results,           // 사이트별 결과 (디버깅용)
+      items: allItems.slice(0, 15)    // 통합 가격순 상위 15개
     });
   }
 };
@@ -350,6 +361,168 @@ function parseSchoolmusic(html, baseUrl) {
     });
   }
   return items;
+}
+
+// ─── 실시간 환율 ────────────────────────────────
+// Yahoo Finance JSON API (1차) → Naver Finance HTML (2차)
+async function handleRates() {
+  // Yahoo Finance 시도
+  try {
+    const [jpyKrw, usdKrw] = await Promise.all([
+      fetchYahooRate('JPYKRW'),
+      fetchYahooRate('USDKRW')
+    ]);
+    return jsonNoCache({
+      jpyKrw,
+      usdKrw,
+      updated: new Date().toISOString(),
+      source: 'yahoo-finance'
+    });
+  } catch (e) {
+    console.warn('[Rates] Yahoo 실패:', e.message);
+  }
+
+  // Naver Finance 시도
+  try {
+    const [jpyKrw, usdKrw] = await Promise.all([
+      fetchNaverRate('FX_JPYKRW'),
+      fetchNaverRate('FX_USDKRW')
+    ]);
+    return jsonNoCache({
+      jpyKrw,
+      usdKrw,
+      updated: new Date().toISOString(),
+      source: 'naver-finance'
+    });
+  } catch (e) {
+    console.warn('[Rates] Naver 실패:', e.message);
+    return jsonNoCache({ error: '모든 환율 소스 실패: ' + e.message }, 502);
+  }
+}
+
+// 환율 히스토리: Yahoo Finance chart API에서 시계열 데이터 가져옴
+// 각 period별 raw 데이터를 fetch → sliceLast로 기간 cut → downsample로 균등 N개 추출
+//   3h:  9포인트 × 20분 간격  (raw: 5m × last 36)
+//   12h: 12포인트 × 1시간 간격 (raw: 1h × last 12)
+//   1d:  12포인트 × 2시간 간격 (raw: 1h × last 24)
+//   1w:  14포인트 × 12시간 간격 (raw: 1h × last 168)
+//   1mo: 15포인트 × 2일 간격   (raw: 1h × last 720)
+async function handleRatesHistory(url) {
+  const pair = (url.searchParams.get('pair') || 'JPYKRW').toUpperCase();
+  const period = url.searchParams.get('period') || '1d';
+
+  const config = {
+    '3h':  { interval: '5m', range: '1d',  sliceLast: 36,  points: 9 },
+    '12h': { interval: '1h', range: '1d',  sliceLast: 12,  points: 12 },
+    '1d':  { interval: '1h', range: '1d',  sliceLast: 24,  points: 12 },
+    '1w':  { interval: '1h', range: '1mo', sliceLast: 168, points: 14 },
+    '1mo': { interval: '1h', range: '1mo', sliceLast: 720, points: 15 }
+  }[period];
+
+  if (!config) return jsonNoCache({ error: `invalid period: ${period}` }, 400);
+  if (!['JPYKRW', 'USDKRW'].includes(pair)) {
+    return jsonNoCache({ error: `invalid pair: ${pair}` }, 400);
+  }
+
+  try {
+    const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${pair}=X?interval=${config.interval}&range=${config.range}`;
+    const res = await fetch(yUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
+      }
+    });
+    if (!res.ok) throw new Error(`Yahoo HTTP ${res.status}`);
+    const yData = await res.json();
+    const result = yData?.chart?.result?.[0];
+    const timestamps = result?.timestamp || [];
+    const closes = result?.indicators?.quote?.[0]?.close || [];
+    if (timestamps.length === 0) throw new Error('Yahoo: 데이터 없음');
+
+    // 1) null 제거
+    let data = timestamps
+      .map((t, i) => ({ t: t * 1000, rate: closes[i] }))
+      .filter(d => d.rate != null && isFinite(d.rate));
+
+    // 2) 최근 N개만 (period 길이만큼)
+    if (config.sliceLast) data = data.slice(-config.sliceLast);
+
+    // 3) 균등 간격으로 N개 추출 (요청된 포인트 수만큼)
+    if (config.points && data.length > config.points) {
+      const step = (data.length - 1) / (config.points - 1);
+      const sampled = [];
+      for (let i = 0; i < config.points; i++) {
+        sampled.push(data[Math.round(i * step)]);
+      }
+      data = sampled;
+    }
+
+    return new Response(JSON.stringify({
+      pair, period,
+      source: 'yahoo-finance',
+      data
+    }), {
+      status: 200,
+      headers: {
+        ...corsHeaders(),
+        'Content-Type': 'application/json; charset=utf-8',
+        // 환율 히스토리는 5분 캐시 (분단위까지 정밀할 필요 없음)
+        'Cache-Control': 'public, max-age=300'
+      }
+    });
+  } catch (e) {
+    return jsonNoCache({ error: 'Yahoo history 실패: ' + e.message }, 502);
+  }
+}
+
+async function fetchYahooRate(pair) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${pair}=X?interval=1m&range=1d`;
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'application/json',
+      'Accept-Language': 'en-US,en;q=0.9'
+    }
+  });
+  if (!res.ok) throw new Error(`Yahoo ${pair} HTTP ${res.status}`);
+  const data = await res.json();
+  const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+  if (typeof price !== 'number' || !isFinite(price) || price <= 0) {
+    throw new Error(`Yahoo ${pair}: 가격 필드 없음`);
+  }
+  return price;
+}
+
+async function fetchNaverRate(code) {
+  // code: 'FX_JPYKRW' 또는 'FX_USDKRW'
+  const url = `https://finance.naver.com/marketindex/exchangeDetail.naver?marketindexCd=${code}`;
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html',
+      'Accept-Language': 'ko-KR,ko;q=0.9',
+      'Referer': 'https://finance.naver.com/'
+    }
+  });
+  if (!res.ok) throw new Error(`Naver ${code} HTTP ${res.status}`);
+
+  const buffer = await res.arrayBuffer();
+  let html;
+  try {
+    html = new TextDecoder('euc-kr').decode(buffer);
+  } catch {
+    html = new TextDecoder('utf-8').decode(buffer);
+  }
+
+  // "매매기준율" 근처의 숫자 추출 (Naver Finance 표준 라벨)
+  const m = html.match(/매매기준율[\s\S]{0,500}?(\d{1,3}(?:,\d{3})*\.\d{1,4})/);
+  if (!m) throw new Error(`Naver ${code}: 매매기준율 못 찾음`);
+  const rate = parseFloat(m[1].replace(/,/g, ''));
+  if (!isFinite(rate) || rate <= 0) throw new Error(`Naver ${code}: 파싱 실패`);
+
+  // JPY는 보통 "100엔당" 기준으로 표시되니 1엔 환산은 /100
+  if (code === 'FX_JPYKRW') return rate / 100;
+  return rate;
 }
 
 // ─── 유틸 ────────────────────────────────
