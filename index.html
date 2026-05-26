@@ -81,6 +81,26 @@ h1 { font-family: var(--font-display); font-size: clamp(42px, 8vw, 68px); letter
 .rate-card-change.up { color: var(--green); }
 .rate-card-change.down { color: var(--red); }
 .rate-card-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.duty-free-yen-box {
+  background: rgba(232,197,71,0.06);
+  border: 1px solid rgba(232,197,71,0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.duty-free-yen-box strong {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+}
+.duty-free-yen-box .note {
+  color: var(--muted);
+  font-size: 11px;
+}
 .live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; vertical-align: middle; margin-right: 4px; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
@@ -485,6 +505,8 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
 ════════════════════════════════ -->
 <div class="tab-panel" id="panel-rate">
 
+  <div class="duty-free-yen-box" id="dutyFreeYenInfo">💡 환율 로드 후 계산됩니다</div>
+
   <div class="rate-cards">
     <div class="rate-card jpy">
       <div class="rate-card-flag">🇯🇵</div>
@@ -714,6 +736,25 @@ function updateDutyFreeDisplay() {
     el.textContent = `$800 (약 ₩${fallbackKrw.toLocaleString('ko-KR')})`;
     failRow.style.display = '';
   }
+  updateDutyFreeYenInfo();
+}
+
+// 환율 탭 — 현재 환율 기준 $800 면세 한도가 일본 현지 표시가로 몇 엔까지 인지
+// (10% TAX FREE 적용 전, 즉 가격표에 적힌 그대로의 엔화 기준)
+function updateDutyFreeYenInfo() {
+  const el = document.getElementById('dutyFreeYenInfo');
+  if (!el) return;
+  if (!jpyRate || !usdRate) {
+    el.textContent = '💡 환율 로드 후 계산됩니다';
+    return;
+  }
+  // 표시가 엔화 × (10/11) × jpyRate ≤ $800 × usdRate
+  // → 표시가 엔화 ≤ ($800 × usdRate × 1.1) / jpyRate
+  const maxYen = (DUTY_FREE_USD * usdRate * 1.1) / jpyRate;
+  const rounded = Math.floor(maxYen / 100) * 100;  // 100엔 단위 내림
+  el.innerHTML =
+    `💡 $800 면세 한도 = 일본 현지 표시가 <strong>¥${rounded.toLocaleString('ja-JP')}</strong>까지 ` +
+    `<span class="note">(10% TAX FREE 받기 전, 가격표 기준)</span>`;
 }
 
 // ─── CHART ────────────────────────────────
