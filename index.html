@@ -397,7 +397,7 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
 
   <div class="info-box">
     💡 <strong>계산 방식 안내</strong><br>
-    일본 악기점에서 여권 제시 시 소비세 10% 면제(TAX FREE) · 한국 입국 시 $800 초과분에 관세 8% + 부가세 10% 부과<br>
+    일본 악기점에서 여권 제시 시 소비세 10% 면제(TAX FREE) · 한국 입국 시 $800 초과분에 <strong>간이세율 15%</strong> (휴대품 직접반입 / 일렉기타 = 일반품목)<br>
     ✈️ <strong>자진신고 시 세금 30% 감면 (최대 20만원)</strong> — 비행기 안 세관신고서 미리 작성 후 자진신고 카운터 이용
   </div>
 
@@ -449,10 +449,8 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
         <span style="color:var(--accent2);font-size:11px">고정환율 1,350원 적용 중</span>
       </div>
       <div class="customs-row"><span>과세 기준</span><span>초과분에만 부과</span></div>
-      <div class="customs-row"><span>관세율 (기타)</span><span>8%</span></div>
-      <div class="customs-row"><span>부가세</span><span>10%</span></div>
-      <div class="customs-row"><span>합산 실효세율</span><span>≈ 18.8%</span></div>
-      <div class="customs-row"><span class="highlight">✈️ 자진신고 시 실효세율</span><span class="highlight">≈ 13.2% (30% 감면)</span></div>
+      <div class="customs-row"><span>간이세율 (일반품목)</span><span>15%</span></div>
+      <div class="customs-row"><span class="highlight">✈️ 자진신고 시 실효세율</span><span class="highlight">≈ 10.5% (30% 감면)</span></div>
     </div>
     <div style="font-size:10px;color:var(--muted);margin:-8px 0 16px;line-height:1.6;padding:0 4px">
       * 실시간 시장환율 기준 추정값 · 실제 <a href="https://unipass.customs.go.kr/clip/index.do" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:underline">관세청 과세환율</a>과 1~2% 차이날 수 있음
@@ -496,8 +494,7 @@ footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 4
       <div class="breakdown-row"><span class="key">실제 지불 가격 (엔화)</span><span class="val" id="bdActualJpy">—</span></div>
       <div class="breakdown-row"><span class="key">원화 환산 (현재 환율)</span><span class="val" id="bdKrw">—</span></div>
       <div class="breakdown-row"><span class="key">면세 한도 초과 여부</span><span class="val" id="bdExempt">—</span></div>
-      <div class="breakdown-row"><span class="key">관세 8%</span><span class="val" id="bdCustoms">—</span></div>
-      <div class="breakdown-row"><span class="key">부가세 10%</span><span class="val" id="bdVat">—</span></div>
+      <div class="breakdown-row"><span class="key">간이세율 15% (휴대품·일반품목)</span><span class="val" id="bdSimplified">—</span></div>
       <div class="breakdown-row" id="bdSelfDeclRow"><span class="key">✈️ 자진신고 30% 감면</span><span class="val good" id="bdSelfDecl">—</span></div>
       <div class="breakdown-row total"><span class="key">최종 실구매가</span><span class="val" id="bdTotal">—</span></div>
     </div>
@@ -1038,9 +1035,9 @@ async function calculate() {
   const isExempt = krwBase <= dutyFreeKrw;
   const taxableKrw = isExempt ? 0 : (krwBase - dutyFreeKrw);
 
-  const customs = taxableKrw * 0.08;
-  const vat     = (taxableKrw + customs) * 0.10;
-  const rawTax  = customs + vat;
+  // 휴대품 간이세율 15% (여행자가 직접 반입하는 일반품목 = 일렉기타 포함)
+  const simplifiedTax = taxableKrw * 0.15;
+  const rawTax = simplifiedTax;
 
   // 자진신고 30% 감면 (최대 200,000원)
   const selfDeclDiscount = (!isExempt && selfDecl) ? Math.min(rawTax * 0.3, 200000) : 0;
@@ -1051,7 +1048,7 @@ async function calculate() {
   document.getElementById('resultProductName').textContent = productName;
   document.getElementById('totalKrw').textContent     = fmt(totalKrw) + '원';
   document.getElementById('totalYenSub').textContent  =
-    `¥${fmtJ(actualJpy)} × ${jpyRate.toFixed(3)}` + (isExempt ? ' (면세)' : ' + 관부가세');
+    `¥${fmtJ(actualJpy)} × ${jpyRate.toFixed(3)}` + (isExempt ? ' (면세)' : ' + 간이세율 15%');
 
   document.getElementById('bdJpy').textContent        = `¥${fmtJ(yenPrice)}`;
   document.getElementById('bdTaxFree').textContent    = taxFree ? `- ¥${fmtJ(taxFreeRefund)} (${fmt(taxFreeRefund * jpyRate)}원 절약)` : '미적용';
@@ -1061,8 +1058,7 @@ async function calculate() {
   document.getElementById('bdExempt').textContent     = isExempt
     ? '✓ 면세 범위 내'
     : `✗ ${fmt(taxableKrw)}원 초과분 과세`;
-  document.getElementById('bdCustoms').textContent    = isExempt ? '면제' : `${fmt(customs)}원`;
-  document.getElementById('bdVat').textContent        = isExempt ? '면제' : `${fmt(vat)}원`;
+  document.getElementById('bdSimplified').textContent = isExempt ? '면제' : `${fmt(simplifiedTax)}원`;
   document.getElementById('bdSelfDecl').textContent   =
     (!isExempt && selfDecl) ? `- ${fmt(selfDeclDiscount)}원` : (isExempt ? '해당없음 (면세)' : '미적용');
   document.getElementById('bdSelfDeclRow').style.display = (!isExempt) ? '' : 'none';
