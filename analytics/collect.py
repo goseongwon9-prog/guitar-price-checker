@@ -58,6 +58,32 @@ query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
 }
 """
 
+QUERY_COUNTRY = """
+query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
+  viewer {
+    accounts(filter: {accountTag: $accountTag}) {
+      rumPageloadEventsAdaptiveGroups(
+        filter: {
+          AND: [
+            {datetime_geq: $start}
+            {datetime_leq: $end}
+            {siteTag: $siteTag}
+          ]
+        }
+        limit: 10000
+        orderBy: [count_DESC]
+      ) {
+        count
+        sum { visits }
+        dimensions {
+          clientCountry
+        }
+      }
+    }
+  }
+}
+"""
+
 QUERY_HOUR = """
 query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
   viewer {
@@ -111,13 +137,11 @@ def fetch_hourly():
     print(f"Hourly data: {hourly}")
     return hourly
 
-def save_csv(rows, hourly):
-    path = Path('analytics/data') / f'{date_str}.csv'
+def save_hourly_csv(hourly):
+    path = Path('analytics/data') / f'{date_str}-hourly.csv'
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            'date', 'hour_kst', 'pageviews', 'visits'
-        ])
+        writer = csv.DictWriter(f, fieldnames=['date', 'hour_kst', 'pageviews', 'visits'])
         writer.writeheader()
         for h, data in hourly.items():
             writer.writerow({
@@ -125,6 +149,21 @@ def save_csv(rows, hourly):
                 'hour_kst': h,
                 'pageviews': data['pageviews'],
                 'visits': data['visits']
+            })
+    print(f"Saved: {path}")
+
+def save_country_csv(country_rows):
+    path = Path('analytics/data') / f'{date_str}-country.csv'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=['date', 'country', 'pageviews', 'visits'])
+        writer.writeheader()
+        for row in country_rows:
+            writer.writerow({
+                'date': date_str,
+                'country': row['dimensions'].get('clientCountry') or 'Unknown',
+                'pageviews': row['count'],
+                'visits': row['sum']['visits']
             })
     print(f"Saved: {path}")
 
@@ -281,5 +320,12 @@ def send_report(rows, hourly):
 rows = fetch_main()
 print(f"Fetched {len(rows)} rows")
 hourly = fetch_hourly()
-save_csv(rows, hourly)
+save_hourly_csv(hourly)
+
+try:
+    country_rows = cf_request(QUERY_COUNTRY, start_utc, end_utc)
+    save_country_csv(country_rows)
+except Exception as e:
+    print(f"Country data unavailable: {e}")
+
 send_report(rows, hourly)
