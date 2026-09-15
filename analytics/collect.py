@@ -42,7 +42,6 @@ query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
         sum { visits }
         dimensions {
           requestPath
-          clientCountryName
           userAgentBrowser
           deviceType
         }
@@ -80,7 +79,7 @@ def save_csv(rows):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=[
-            'date', 'path', 'pageviews', 'visits', 'country', 'browser', 'device'
+            'date', 'path', 'pageviews', 'visits', 'browser', 'device'
         ])
         writer.writeheader()
         for row in rows:
@@ -89,7 +88,6 @@ def save_csv(rows):
                 'path': row['dimensions']['requestPath'],
                 'pageviews': row['count'],
                 'visits': row['sum']['visits'],
-                'country': row['dimensions']['clientCountryName'] or '',
                 'browser': row['dimensions']['userAgentBrowser'] or '',
                 'device': row['dimensions']['deviceType'] or ''
             })
@@ -104,12 +102,6 @@ def send_report(rows):
         p = r['dimensions']['requestPath'] or '/'
         page_views[p] = page_views.get(p, 0) + r['count']
     top_pages = sorted(page_views.items(), key=lambda x: x[1], reverse=True)[:5]
-
-    country_views = {}
-    for r in rows:
-        c = r['dimensions']['clientCountryName'] or 'Unknown'
-        country_views[c] = country_views.get(c, 0) + r['count']
-    top_countries = sorted(country_views.items(), key=lambda x: x[1], reverse=True)[:5]
 
     browser_views = {}
     for r in rows:
@@ -128,9 +120,6 @@ def send_report(rows):
     ]
     for page, views in top_pages:
         lines.append(f"  {page}: {views:,}")
-    lines += ["", "🌍 국가별"]
-    for country, views in top_countries:
-        lines.append(f"  {country}: {views:,}")
     lines += ["", "🌐 브라우저"]
     for browser, views in top_browsers:
         lines.append(f"  {browser}: {views:,}")
