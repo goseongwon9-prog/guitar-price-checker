@@ -173,6 +173,7 @@ def generate_hourly_chart(hourly):
         'data': {
             'labels': labels,
             'datasets': [{
+                'label': '방문자',
                 'data': visits,
                 'borderColor': '#2563eb',
                 'backgroundColor': 'rgba(37,99,235,0.08)',
@@ -184,11 +185,33 @@ def generate_hourly_chart(hourly):
             }]
         },
         'options': {
-            'plugins': {'legend': {'display': False}},
+            'plugins': {
+                'legend': {'display': False}
+            },
             'scales': {
-                'x': {'grid': {'display': False}, 'ticks': {'font': {'size': 10}}},
-                'y': {'beginAtZero': True, 'ticks': {'precision': 0, 'font': {'size': 10}},
-                      'grid': {'color': '#e2e8f0'}}
+                'x': {
+                    'grid': {'color': '#e2e8f0'},
+                    'ticks': {
+                        'font': {'size': 10},
+                        'maxRotation': 0,
+                        'callback': "function(val, i) { return i % 3 === 0 ? this.getLabelForValue(val) : ''; }"
+                    }
+                },
+                'y': {
+                    'beginAtZero': True,
+                    'grid': {'color': '#e2e8f0'},
+                    'ticks': {
+                        'precision': 0,
+                        'font': {'size': 10},
+                        'stepSize': 1
+                    },
+                    'title': {
+                        'display': True,
+                        'text': '방문자수',
+                        'font': {'size': 10},
+                        'color': '#64748b'
+                    }
+                }
             }
         }
     }
