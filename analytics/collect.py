@@ -220,12 +220,6 @@ def send_report(rows):
         if h:
             hour_data[h] = hour_data.get(h, 0) + r['count']
 
-    page_views = {}
-    for r in rows:
-        p = r['dimensions'].get('requestPath') or '/'
-        page_views[p] = page_views.get(p, 0) + r['count']
-    top_pages = sorted(page_views.items(), key=lambda x: x[1], reverse=True)[:5]
-
     country_views = {}
     for r in rows:
         c = r['dimensions'].get('countryName') or ''
@@ -238,6 +232,12 @@ def send_report(rows):
         b = r['dimensions'].get('userAgentBrowser') or 'Unknown'
         browser_views[b] = browser_views.get(b, 0) + r['count']
     top_browsers = sorted(browser_views.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    device_views = {}
+    for r in rows:
+        d = r['dimensions'].get('deviceType') or 'Unknown'
+        device_views[d] = device_views.get(d, 0) + r['count']
+    top_devices = sorted(device_views.items(), key=lambda x: x[1], reverse=True)
 
     peak_hour = max(hour_data.items(), key=lambda x: x[1])[0] if hour_data else '-'
 
@@ -298,9 +298,9 @@ def send_report(rows):
     {country_section}
 
     <div style="margin-bottom:20px">
-      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px">📄 인기 페이지</div>
+      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px">📱 기기 유형</div>
       <table style="width:100%;border-collapse:collapse;font-size:13px">
-        {make_table_rows([(f'<code style="font-size:11px">{p}</code>', v) for p, v in top_pages])}
+        {make_table_rows(top_devices)}
       </table>
     </div>
 
