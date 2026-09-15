@@ -1,0 +1,10 @@
+date,path,pageviews,visits,browser,device
+2026-09-15,/,6,6,Chrome,desktop
+2026-09-15,/,4,4,SamsungInternet,mobile
+2026-09-15,/,4,4,ChromeMobile,mobile
+2026-09-15,/,4,4,MobileSafari,mobile
+2026-09-15,/,3,3,MobileSafari,tablet
+2026-09-15,/,1,1,Unknown,mobile
+2026-09-15,/,1,1,ChromeMobileWebview,mobile
+2026-09-15,/,1,1,Safari,desktop
+2026-09-15,/,1,1,ChromeMobile,tablet
