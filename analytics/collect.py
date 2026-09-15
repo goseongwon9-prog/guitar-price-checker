@@ -70,9 +70,16 @@ def fetch_analytics():
     )
     resp.raise_for_status()
     data = resp.json()
-    if 'errors' in data:
+    print(f"API response keys: {list(data.keys())}")
+    if data.get('errors'):
         raise Exception(f"GraphQL errors: {data['errors']}")
-    return data['data']['viewer']['accounts'][0]['rumPageloadEventsAdaptiveGroups']
+    accounts = data['data']['viewer']['accounts']
+    print(f"Accounts found: {len(accounts)}")
+    if not accounts:
+        raise Exception("No accounts found in response")
+    rows = accounts[0]['rumPageloadEventsAdaptiveGroups']
+    print(f"Raw rows count: {len(rows)}")
+    return rows
 
 def save_csv(rows):
     path = Path('analytics/data') / f'{date_str}.csv'
