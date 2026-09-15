@@ -37,7 +37,7 @@ query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
           ]
         }
         limit: 10000
-        orderBy: [datetime_ASC]
+        orderBy: [count_DESC]
       ) {
         count
         sum { visits }
@@ -67,7 +67,7 @@ query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
           ]
         }
         limit: 10000
-        orderBy: [datetime_ASC]
+        orderBy: [count_DESC]
       ) {
         count
         sum { visits }
