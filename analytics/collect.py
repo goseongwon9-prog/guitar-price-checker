@@ -162,35 +162,33 @@ def read_prev_total():
                 pass
     return total
 
-def generate_hourly_svg(hourly):
-    W, H = 520, 90
-    bar_w = W / 24
+def generate_hourly_chart(hourly):
     max_val = max((v['pageviews'] for v in hourly.values()), default=1) or 1
+    BAR_H = 60
 
-    elements = []
+    bars = []
+    labels = []
     for h in range(24):
         hs = f'{h:02d}'
         val = hourly.get(hs, {}).get('pageviews', 0)
-        bh = max(2, int((val / max_val) * (H - 18))) if val > 0 else 0
-        x = h * bar_w
-        y = H - bh - 16
+        bar_h = max(2, int((val / max_val) * BAR_H)) if val > 0 else 0
         is_peak = val > 0 and val == max_val
-        color = '#2563eb' if is_peak else '#93c5fd'
-        if bh > 0:
-            elements.append(
-                f'<rect x="{x+1:.1f}" y="{y}" width="{bar_w-2:.1f}" height="{bh}" rx="2" fill="{color}"/>'
-            )
-        if h % 6 == 0 or h == 23:
-            lx = x + bar_w / 2
-            elements.append(
-                f'<text x="{lx:.1f}" y="{H}" text-anchor="middle" font-size="9" fill="#94a3b8">{h:02d}시</text>'
-            )
+        color = '#2563eb' if is_peak else '#bfdbfe'
+        bars.append(
+            f'<td style="width:4.16%;padding:0 1px;vertical-align:bottom;height:{BAR_H}px">'
+            f'<div style="background:{color};height:{bar_h}px;border-radius:2px 2px 0 0"></div>'
+            f'</td>'
+        )
+        label = f'{h:02d}' if h % 6 == 0 or h == 23 else '&nbsp;'
+        labels.append(
+            f'<td style="width:4.16%;padding:0;text-align:center;font-size:8px;color:#94a3b8">{label}</td>'
+        )
 
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H+4}" style="display:block">'
-        f'<rect width="{W}" height="{H}" rx="6" fill="#f1f5f9"/>'
-        + ''.join(elements)
-        + '</svg>'
+        f'<div style="background:#f1f5f9;border-radius:8px;padding:12px 8px 4px">'
+        f'<table style="width:100%;border-collapse:collapse"><tr>{"".join(bars)}</tr></table>'
+        f'<table style="width:100%;border-collapse:collapse;margin-top:2px"><tr>{"".join(labels)}</tr></table>'
+        f'</div>'
     )
 
 def make_table_rows(items):
@@ -244,7 +242,7 @@ def send_report(hourly_rows, country_rows, raw_rows):
     else:
         vs_html = '<span style="color:#94a3b8;font-size:11px">어제 데이터 없음</span>'
 
-    svg = generate_hourly_svg(hourly_rows)
+    svg = generate_hourly_chart(hourly_rows)
 
     country_section = ''
     if top_countries:
