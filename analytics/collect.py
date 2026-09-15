@@ -73,6 +73,7 @@ query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
         limit: 1
       ) {
         count
+        sum { visits }
       }
     }
   }
@@ -104,7 +105,9 @@ def fetch_hourly():
         h_start = target.replace(hour=h, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
         h_end = target.replace(hour=h, minute=59, second=59, microsecond=0).astimezone(timezone.utc)
         groups = cf_request(QUERY_HOUR, h_start, h_end)
-        hourly[f'{h:02d}'] = sum(g['count'] for g in groups)
+        pageviews = sum(g['count'] for g in groups)
+        visits = sum(g['sum']['visits'] for g in groups)
+        hourly[f'{h:02d}'] = {'pageviews': pageviews, 'visits': visits}
     print(f"Hourly data: {hourly}")
     return hourly
 
@@ -113,17 +116,15 @@ def save_csv(rows, hourly):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=[
-            'date', 'hour_kst', 'pageviews', 'visits', 'browser', 'device'
+            'date', 'hour_kst', 'pageviews', 'visits'
         ])
         writer.writeheader()
-        for h, count in hourly.items():
+        for h, data in hourly.items():
             writer.writerow({
                 'date': date_str,
                 'hour_kst': h,
-                'pageviews': count,
-                'visits': '',
-                'browser': '',
-                'device': ''
+                'pageviews': data['pageviews'],
+                'visits': data['visits']
             })
     print(f"Saved: {path}")
 
@@ -185,7 +186,7 @@ def send_report(rows, hourly):
     total_visits = sum(r['sum']['visits'] for r in rows)
     prev_total = read_prev_total()
 
-    peak_hour = max(hourly.items(), key=lambda x: x[1])[0] if any(hourly.values()) else '-'
+    peak_hour = max(hourly.items(), key=lambda x: x[1]['pageviews'])[0] if any(v['pageviews'] for v in hourly.values()) else '-'
 
     browser_views = {}
     for r in rows:
@@ -212,7 +213,7 @@ def send_report(rows, hourly):
     else:
         vs_html = '<span style="color:#94a3b8;font-size:11px">어제 데이터 없음</span>'
 
-    svg = generate_hourly_svg(hourly)
+    svg = generate_hourly_svg({h: v['pageviews'] for h, v in hourly.items()})
 
     html = f'''<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
