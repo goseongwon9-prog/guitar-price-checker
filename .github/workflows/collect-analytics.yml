@@ -9,6 +9,14 @@ on:
         description: '수집할 날짜 (YYYY-MM-DD, 비워두면 어제)'
         required: false
         default: ''
+      send_email:
+        description: '이메일 리포트 발송'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions:
   contents: write
@@ -34,6 +42,7 @@ jobs:
           CF_SITE_TAG: ${{ secrets.CF_SITE_TAG }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           TARGET_DATE: ${{ inputs.date }}
+          SEND_EMAIL: ${{ inputs.send_email || 'true' }}
         run: python analytics/collect.py
 
       - name: Commit and push

@@ -318,4 +318,7 @@ country_rows = cf_request(QUERY_COUNTRY)
 print(f"Fetched {len(country_rows)} country rows")
 save_country_csv(country_rows)
 
-send_report(hourly, country_rows, hourly_rows_raw)
+if os.environ.get('SEND_EMAIL', 'true').lower() == 'true':
+    send_report(hourly, country_rows, hourly_rows_raw)
+else:
+    print("Email skipped (SEND_EMAIL=false)")
