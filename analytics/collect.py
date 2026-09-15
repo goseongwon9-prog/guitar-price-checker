@@ -24,7 +24,13 @@ prev_date_str = (target - timedelta(days=1)).strftime('%Y-%m-%d')
 start_utc = target.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 end_utc = target.replace(hour=23, minute=59, second=59, microsecond=0).astimezone(timezone.utc)
 
-QUERY = """
+CF_HEADERS = {
+    'Authorization': f'Bearer {CF_API_TOKEN}',
+    'Content-Type': 'application/json'
+}
+CF_GQL = 'https://api.cloudflare.com/client/v4/graphql'
+
+QUERY_MAIN = """
 query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
   viewer {
     accounts(filter: {accountTag: $accountTag}) {
@@ -42,11 +48,9 @@ query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
         count
         sum { visits }
         dimensions {
-          datetime
           requestPath
           userAgentBrowser
           deviceType
-          countryName
         }
       }
     }
@@ -54,7 +58,7 @@ query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
 }
 """
 
-QUERY_NO_COUNTRY = """
+QUERY_HOUR = """
 query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
   viewer {
     accounts(filter: {accountTag: $accountTag}) {
@@ -66,82 +70,60 @@ query($accountTag: String!, $siteTag: String!, $start: Time!, $end: Time!) {
             {siteTag: $siteTag}
           ]
         }
-        limit: 10000
-        orderBy: [count_DESC]
+        limit: 1
       ) {
         count
-        sum { visits }
-        dimensions {
-          datetime
-          requestPath
-          userAgentBrowser
-          deviceType
-        }
       }
     }
   }
 }
 """
 
-def fetch_analytics():
-    def run_query(query):
-        resp = requests.post(
-            'https://api.cloudflare.com/client/v4/graphql',
-            headers={
-                'Authorization': f'Bearer {CF_API_TOKEN}',
-                'Content-Type': 'application/json'
-            },
-            json={
-                'query': query,
-                'variables': {
-                    'accountTag': CF_ACCOUNT_ID,
-                    'siteTag': CF_SITE_TAG,
-                    'start': start_utc.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                    'end': end_utc.strftime('%Y-%m-%dT%H:%M:%SZ')
-                }
-            }
-        )
-        resp.raise_for_status()
-        return resp.json()
-
-    data = run_query(QUERY)
+def cf_request(query, start, end):
+    resp = requests.post(CF_GQL, headers=CF_HEADERS, json={
+        'query': query,
+        'variables': {
+            'accountTag': CF_ACCOUNT_ID,
+            'siteTag': CF_SITE_TAG,
+            'start': start.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'end': end.strftime('%Y-%m-%dT%H:%M:%SZ')
+        }
+    })
+    resp.raise_for_status()
+    data = resp.json()
     if data.get('errors'):
-        print("countryName field not supported, retrying without it...")
-        data = run_query(QUERY_NO_COUNTRY)
-        if data.get('errors'):
-            raise Exception(f"GraphQL errors: {data['errors']}")
+        raise Exception(f"GraphQL errors: {data['errors']}")
+    return data['data']['viewer']['accounts'][0]['rumPageloadEventsAdaptiveGroups']
 
-    accounts = data['data']['viewer']['accounts']
-    if not accounts:
-        raise Exception("No accounts found")
-    return accounts[0]['rumPageloadEventsAdaptiveGroups']
+def fetch_main():
+    return cf_request(QUERY_MAIN, start_utc, end_utc)
 
-def parse_hour_kst(dt_str):
-    if not dt_str:
-        return ''
-    dt_utc = datetime.strptime(dt_str, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)
-    return dt_utc.astimezone(KST).strftime('%H')
+def fetch_hourly():
+    hourly = {}
+    for h in range(24):
+        h_start = target.replace(hour=h, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+        h_end = target.replace(hour=h, minute=59, second=59, microsecond=0).astimezone(timezone.utc)
+        groups = cf_request(QUERY_HOUR, h_start, h_end)
+        hourly[f'{h:02d}'] = sum(g['count'] for g in groups)
+    print(f"Hourly data: {hourly}")
+    return hourly
 
-def save_csv(rows):
+def save_csv(rows, hourly):
     path = Path('analytics/data') / f'{date_str}.csv'
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=[
-            'date', 'hour_kst', 'datetime_utc', 'path', 'pageviews', 'visits', 'country', 'browser', 'device'
+            'date', 'hour_kst', 'pageviews', 'visits', 'browser', 'device'
         ])
         writer.writeheader()
-        for row in rows:
-            dt_str_val = row['dimensions'].get('datetime') or ''
+        for h, count in hourly.items():
             writer.writerow({
                 'date': date_str,
-                'hour_kst': parse_hour_kst(dt_str_val),
-                'datetime_utc': dt_str_val,
-                'path': row['dimensions'].get('requestPath') or '',
-                'pageviews': row['count'],
-                'visits': row['sum']['visits'],
-                'country': row['dimensions'].get('countryName') or '',
-                'browser': row['dimensions'].get('userAgentBrowser') or '',
-                'device': row['dimensions'].get('deviceType') or ''
+                'hour_kst': h,
+                'pageviews': count,
+                'visits': '',
+                'browser': '',
+                'device': ''
             })
     print(f"Saved: {path}")
 
@@ -153,7 +135,7 @@ def read_prev_total():
     with open(path, 'r', encoding='utf-8') as f:
         for row in csv.DictReader(f):
             try:
-                total += int(row.get('pageviews', 0))
+                total += int(row.get('pageviews', 0) or 0)
             except ValueError:
                 pass
     return total
@@ -161,7 +143,7 @@ def read_prev_total():
 def generate_hourly_svg(hour_data):
     W, H = 520, 90
     bar_w = W / 24
-    max_val = max(hour_data.values()) if hour_data else 1
+    max_val = max(hour_data.values()) if any(hour_data.values()) else 1
 
     elements = []
     for h in range(24):
@@ -189,17 +171,6 @@ def generate_hourly_svg(hour_data):
         + '</svg>'
     )
 
-COUNTRY_FLAGS = {
-    'South Korea': '🇰🇷', 'Korea, Republic of': '🇰🇷',
-    'United States': '🇺🇸', 'Japan': '🇯🇵', 'China': '🇨🇳',
-    'Germany': '🇩🇪', 'United Kingdom': '🇬🇧', 'France': '🇫🇷',
-    'Australia': '🇦🇺', 'Canada': '🇨🇦', 'Singapore': '🇸🇬',
-    'Taiwan': '🇹🇼', 'Hong Kong': '🇭🇰', 'Vietnam': '🇻🇳',
-}
-
-def flag(country):
-    return COUNTRY_FLAGS.get(country, '🌐')
-
 def make_table_rows(items):
     return ''.join(
         f'<tr>'
@@ -209,23 +180,12 @@ def make_table_rows(items):
         for label, val in items
     )
 
-def send_report(rows):
+def send_report(rows, hourly):
     total_views = sum(r['count'] for r in rows)
     total_visits = sum(r['sum']['visits'] for r in rows)
     prev_total = read_prev_total()
 
-    hour_data = {}
-    for r in rows:
-        h = parse_hour_kst(r['dimensions'].get('datetime') or '')
-        if h:
-            hour_data[h] = hour_data.get(h, 0) + r['count']
-
-    country_views = {}
-    for r in rows:
-        c = r['dimensions'].get('countryName') or ''
-        if c:
-            country_views[c] = country_views.get(c, 0) + r['count']
-    top_countries = sorted(country_views.items(), key=lambda x: x[1], reverse=True)[:6]
+    peak_hour = max(hourly.items(), key=lambda x: x[1])[0] if any(hourly.values()) else '-'
 
     browser_views = {}
     for r in rows:
@@ -238,8 +198,6 @@ def send_report(rows):
         d = r['dimensions'].get('deviceType') or 'Unknown'
         device_views[d] = device_views.get(d, 0) + r['count']
     top_devices = sorted(device_views.items(), key=lambda x: x[1], reverse=True)
-
-    peak_hour = max(hour_data.items(), key=lambda x: x[1])[0] if hour_data else '-'
 
     if prev_total is not None and prev_total > 0:
         diff = total_views - prev_total
@@ -254,16 +212,7 @@ def send_report(rows):
     else:
         vs_html = '<span style="color:#94a3b8;font-size:11px">어제 데이터 없음</span>'
 
-    svg = generate_hourly_svg(hour_data)
-
-    country_section = ''
-    if top_countries:
-        rows_html = make_table_rows([(f'{flag(c)} {c}', v) for c, v in top_countries])
-        country_section = f'''
-    <div style="margin-bottom:20px">
-      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px">🌍 국가별</div>
-      <table style="width:100%;border-collapse:collapse;font-size:13px">{rows_html}</table>
-    </div>'''
+    svg = generate_hourly_svg(hourly)
 
     html = f'''<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -294,8 +243,6 @@ def send_report(rows):
       <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px">⏰ 시간별 트래픽 (KST)</div>
       {svg}
     </div>
-
-    {country_section}
 
     <div style="margin-bottom:20px">
       <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px">📱 기기 유형</div>
@@ -330,7 +277,8 @@ def send_report(rows):
     )
     print(f"Email sent: {resp.status_code}")
 
-rows = fetch_analytics()
-print(f"Fetched {len(rows)} rows for {date_str}")
-save_csv(rows)
-send_report(rows)
+rows = fetch_main()
+print(f"Fetched {len(rows)} rows")
+hourly = fetch_hourly()
+save_csv(rows, hourly)
+send_report(rows, hourly)
