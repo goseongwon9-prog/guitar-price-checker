@@ -1,5 +1,7 @@
 import os
 import csv
+import json
+import urllib.parse
 import requests
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -163,33 +165,36 @@ def read_prev_total():
     return total
 
 def generate_hourly_chart(hourly):
-    max_val = max((v['pageviews'] for v in hourly.values()), default=1) or 1
-    BAR_H = 60
+    labels = [f'{h:02d}시' for h in range(24)]
+    visits = [hourly.get(f'{h:02d}', {}).get('visits', 0) for h in range(24)]
 
-    bars = []
-    labels = []
-    for h in range(24):
-        hs = f'{h:02d}'
-        val = hourly.get(hs, {}).get('pageviews', 0)
-        bar_h = max(2, int((val / max_val) * BAR_H)) if val > 0 else 0
-        is_peak = val > 0 and val == max_val
-        color = '#2563eb' if is_peak else '#bfdbfe'
-        bars.append(
-            f'<td style="width:4.16%;padding:0 1px;vertical-align:bottom;height:{BAR_H}px">'
-            f'<div style="background:{color};height:{bar_h}px;border-radius:2px 2px 0 0"></div>'
-            f'</td>'
-        )
-        label = f'{h:02d}' if h % 6 == 0 or h == 23 else '&nbsp;'
-        labels.append(
-            f'<td style="width:4.16%;padding:0;text-align:center;font-size:8px;color:#94a3b8">{label}</td>'
-        )
+    config = {
+        'type': 'line',
+        'data': {
+            'labels': labels,
+            'datasets': [{
+                'data': visits,
+                'borderColor': '#2563eb',
+                'backgroundColor': 'rgba(37,99,235,0.08)',
+                'fill': True,
+                'tension': 0.4,
+                'pointRadius': 3,
+                'pointBackgroundColor': '#2563eb',
+                'borderWidth': 2
+            }]
+        },
+        'options': {
+            'plugins': {'legend': {'display': False}},
+            'scales': {
+                'x': {'grid': {'display': False}, 'ticks': {'font': {'size': 10}}},
+                'y': {'beginAtZero': True, 'ticks': {'precision': 0, 'font': {'size': 10}},
+                      'grid': {'color': '#e2e8f0'}}
+            }
+        }
+    }
 
-    return (
-        f'<div style="background:#f1f5f9;border-radius:8px;padding:12px 8px 4px">'
-        f'<table style="width:100%;border-collapse:collapse"><tr>{"".join(bars)}</tr></table>'
-        f'<table style="width:100%;border-collapse:collapse;margin-top:2px"><tr>{"".join(labels)}</tr></table>'
-        f'</div>'
-    )
+    url = 'https://quickchart.io/chart?w=520&h=180&bkg=white&c=' + urllib.parse.quote(json.dumps(config))
+    return f'<img src="{url}" width="520" style="display:block;border-radius:8px;max-width:100%">'
 
 def make_table_rows(items):
     return ''.join(
